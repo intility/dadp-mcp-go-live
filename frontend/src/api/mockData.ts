@@ -66,7 +66,8 @@ All tests passing.`,
         developer_email: summary.developer_email,
       },
       executive_summary: {
-        overall_status: summary.status === "approved" ? "APPROVED" : "NEEDS_REVIEW",
+        overall_status:
+          summary.status === "approved" ? "APPROVED" : "NEEDS_REVIEW",
         critical_issues_count: summary.status === "rejected" ? 2 : 0,
       },
       phase1_security: {

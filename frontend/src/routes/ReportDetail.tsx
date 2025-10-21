@@ -185,8 +185,8 @@ export default function ReportDetail() {
                     <dd>
                       <StatusBadge
                         status={
-                          report.report_json.executive_summary.overall_status ===
-                          "APPROVED"
+                          report.report_json.executive_summary
+                            .overall_status === "APPROVED"
                             ? "approved"
                             : "pending_review"
                         }
@@ -197,8 +197,8 @@ export default function ReportDetail() {
                       <strong>Critical Issues:</strong>
                     </dt>
                     <dd>
-                      {report.report_json.executive_summary.critical_issues_count ||
-                        0}
+                      {report.report_json.executive_summary
+                        .critical_issues_count || 0}
                     </dd>
                   </>
                 )}
@@ -220,16 +220,16 @@ export default function ReportDetail() {
                             report.report_json.phase1_security.risk_level ===
                             "LOW"
                               ? "#d4edda"
-                              : report.report_json.phase1_security.risk_level ===
-                                  "MEDIUM"
+                              : report.report_json.phase1_security
+                                    .risk_level === "MEDIUM"
                                 ? "#fff3cd"
                                 : "#f8d7da",
                           color:
                             report.report_json.phase1_security.risk_level ===
                             "LOW"
                               ? "#155724"
-                              : report.report_json.phase1_security.risk_level ===
-                                  "MEDIUM"
+                              : report.report_json.phase1_security
+                                    .risk_level === "MEDIUM"
                                 ? "#856404"
                                 : "#721c24",
                         }}

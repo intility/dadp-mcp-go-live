@@ -1,0 +1,44 @@
+/**
+ * Global styles for the application
+ *
+ * Responsive padding requirements:
+ * - Mobile (up to 600px): 16px
+ * - Tablet/Desktop (600px to 1919px): 24px
+ * - Large Desktop (1920px+): 40px
+ *
+ * Using Bifrost's .bf-page-padding class with a small override for mobile
+ * Bifrost default: 12px (mobile), 24px (600-1919px), 40px (1920px+)
+ * Override: 16px for mobile to match requirements
+ */
+
+/* Override mobile padding from 12px to 16px */
+main.bf-page-padding {
+  padding: 16px;
+  background: transparent;
+}
+
+/* Bifrost handles the rest via .bf-page-padding at larger breakpoints */
+@media (min-width: 600px) {
+  main.bf-page-padding {
+    padding: 24px; /* Already set by Bifrost, keeping for clarity */
+  }
+}
+
+@media (min-width: 1920px) {
+  main.bf-page-padding {
+    padding: 40px; /* Already set by Bifrost, keeping for clarity */
+  }
+}
+
+/* Remove all padding from Section components inside main */
+main section,
+main .bf-section {
+  padding: 0;
+}
+
+/* Remove all padding and max-width from Container components inside main */
+main .bf-container {
+  max-width: none;
+  padding: 0;
+  background: transparent;
+}

@@ -37,6 +37,7 @@ This POC validates a simple workflow:
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
+| **frontend/** | React + Vite + Bifrost | Web UI for reviewing reports |
 | **rust-api/** | Rust + Axum | HTTP API for CRUD operations |
 | **mcp-server/** | Python + uv | MCP tools (submit, list) |
 | **PostgreSQL** | Database | Store reports |
@@ -47,6 +48,7 @@ This POC validates a simple workflow:
 
 - Rust (via `rustup`)
 - Python 3.11+
+- Node.js 18+
 - uv (`pip install uv` or `brew install uv`)
 - Docker
 - just (`cargo install just` or `brew install just`)

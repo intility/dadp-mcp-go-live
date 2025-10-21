@@ -9,7 +9,7 @@ default:
 # Setup & Installation
 # ============================================================================
 
-# Install all dependencies (Rust API + MCP Server)
+# Install all dependencies (Rust API + MCP Server + Frontend)
 setup:
     @echo "==> Setting up Rust API..."
     cd rust-api && just setup
@@ -17,15 +17,21 @@ setup:
     @echo "==> Setting up MCP Server..."
     cd mcp-server && just setup
     @echo ""
-    @echo "✅ Setup complete for both services!"
+    @echo "==> Setting up Frontend..."
+    cd frontend && npm install
+    @echo ""
+    @echo "✅ Setup complete for all services!"
 
-# Install dependencies for both services
+# Install dependencies for all services
 install:
     @echo "==> Installing Rust API dependencies..."
     cd rust-api && just install
     @echo ""
     @echo "==> Installing MCP Server dependencies..."
     cd mcp-server && just install
+    @echo ""
+    @echo "==> Installing Frontend dependencies..."
+    cd frontend && npm install
     @echo ""
     @echo "✅ Dependencies installed!"
 
@@ -76,6 +82,18 @@ run-mcp:
 # Run only the MCP Server in HTTP mode (port 3000)
 run-mcp-http:
     cd mcp-server && just run-http
+
+# Run only the Frontend (port 5173)
+run-frontend:
+    cd frontend && npm run dev
+
+# Build the Frontend for production
+build-frontend:
+    cd frontend && npm run build
+
+# Preview the Frontend production build
+preview-frontend:
+    cd frontend && npm run preview
 
 # ============================================================================
 # Development - Full Stack
@@ -281,13 +299,20 @@ test-api:
 test-mcp:
     cd mcp-server && just test
 
-# Run all tests (both services)
+# Run Frontend tests
+test-frontend:
+    cd frontend && npm test
+
+# Run all tests (all services)
 test:
     @echo "==> Testing Rust API..."
     cd rust-api && just test
     @echo ""
     @echo "==> Testing MCP Server..."
     cd mcp-server && just test
+    @echo ""
+    @echo "==> Testing Frontend..."
+    cd frontend && npm test
     @echo ""
     @echo "✅ All tests passed!"
 
@@ -362,13 +387,16 @@ fmt-check:
     @echo "==> Checking Python formatting..."
     cd mcp-server && just fmt-check || echo "(Python formatter optional)"
 
-# Run linters for both services
+# Run linters for all services
 lint:
     @echo "==> Linting Rust code..."
     cd rust-api && just lint
     @echo ""
     @echo "==> Linting Python code..."
     cd mcp-server && just lint || echo "(Python linter optional)"
+    @echo ""
+    @echo "==> Linting Frontend code..."
+    cd frontend && npm run lint
     @echo ""
     @echo "✅ Linting complete!"
 
@@ -379,6 +407,9 @@ check:
     @echo ""
     @echo "==> Running Python checks..."
     cd mcp-server && just check || echo "(Some Python checks optional)"
+    @echo ""
+    @echo "==> Running Frontend checks..."
+    cd frontend && npm run lint
     @echo ""
     @echo "✅ All checks passed!"
 
@@ -398,13 +429,16 @@ build-release:
 # Cleanup
 # ============================================================================
 
-# Clean build artifacts from both services
+# Clean build artifacts from all services
 clean:
     @echo "==> Cleaning Rust API..."
     cd rust-api && just clean
     @echo ""
     @echo "==> Cleaning MCP Server..."
     cd mcp-server && just clean
+    @echo ""
+    @echo "==> Cleaning Frontend..."
+    cd frontend && rm -rf dist node_modules/.vite
     @echo ""
     @echo "✅ Cleaned!"
 
@@ -422,6 +456,7 @@ info:
     @echo "================================"
     @echo ""
     @echo "Services:"
+    @echo "  - Frontend:    http://localhost:5173"
     @echo "  - Rust API:    http://localhost:8080"
     @echo "  - MCP Server:  stdio (for Claude Code)"
     @echo "  - PostgreSQL:  localhost:5433"

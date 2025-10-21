@@ -137,16 +137,20 @@ start-all: db-start
     cd ..
 
     echo "Waiting for API to start..."
-    sleep 3
-
-    if curl -s http://localhost:8080/healthz >/dev/null 2>&1; then
-        echo "✅ API is running on http://localhost:8080"
-        echo "   Logs: /tmp/golive-api.log"
-        echo "   PID: $(cat /tmp/golive-api.pid)"
-    else
-        echo "❌ API failed to start. Check /tmp/golive-api.log"
-        exit 1
-    fi
+    for i in {1..15}; do
+        sleep 1
+        if curl -s http://localhost:8080/healthz >/dev/null 2>&1; then
+            echo "✅ API is running on http://localhost:8080"
+            echo "   Logs: /tmp/golive-api.log"
+            echo "   PID: $(cat /tmp/golive-api.pid)"
+            break
+        fi
+        if [ $i -eq 15 ]; then
+            echo "❌ API failed to start. Check /tmp/golive-api.log"
+            cat /tmp/golive-api.log
+            exit 1
+        fi
+    done
 
     echo ""
     echo "Services started!"
@@ -190,15 +194,19 @@ start-all-http: db-start
     cd ..
 
     echo "Waiting for API to start..."
-    sleep 3
-
-    if curl -s http://localhost:8080/healthz >/dev/null 2>&1; then
-        echo "✅ API is running on http://localhost:8080"
-        echo "   Logs: /tmp/golive-api.log"
-    else
-        echo "❌ API failed to start. Check /tmp/golive-api.log"
-        exit 1
-    fi
+    for i in {1..15}; do
+        sleep 1
+        if curl -s http://localhost:8080/healthz >/dev/null 2>&1; then
+            echo "✅ API is running on http://localhost:8080"
+            echo "   Logs: /tmp/golive-api.log"
+            break
+        fi
+        if [ $i -eq 15 ]; then
+            echo "❌ API failed to start. Check /tmp/golive-api.log"
+            cat /tmp/golive-api.log
+            exit 1
+        fi
+    done
 
     echo ""
     echo "==> Starting MCP Server in HTTP mode..."

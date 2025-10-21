@@ -406,7 +406,7 @@ uv run python test_manual.py
 
 #### Step 1: Start the MCP Server
 
-First, start the MCP server (it will run on port 3000 by default):
+First, start the MCP server (it will run on port 5000 by default):
 
 ```bash
 cd mcp-server
@@ -417,7 +417,7 @@ uv run python -m mcp_golive.server
 The server will display:
 ```
 📦 Transport:       Streamable-HTTP
-🔗 Server URL:      http://127.0.0.1:3000/mcp
+🔗 Server URL:      http://127.0.0.1:5000/mcp
 ```
 
 #### Step 2: Configure Claude Code
@@ -431,7 +431,7 @@ Add to your MCP settings (`~/.config/claude/mcp_settings.json`):
       "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:3000/mcp"
+        "http://localhost:5000/mcp"
       ]
     }
   }
@@ -750,7 +750,7 @@ You're using the wrong configuration in `mcp_settings.json`. HTTP MCP servers re
          "command": "npx",
          "args": [
            "mcp-remote",
-           "http://localhost:3000/mcp"
+           "http://localhost:5000/mcp"
          ]
        }
      }

@@ -29,8 +29,8 @@ class Settings(BaseSettings):
         description="Environment: dev, staging, prod"
     )
     port: int = Field(
-        default=3000,
-        description="Port for HTTP transport",
+        default=5000,
+        description="Port for HTTP transport (MCP server)",
         alias="MCP_PORT"
     )
     host: str = Field(

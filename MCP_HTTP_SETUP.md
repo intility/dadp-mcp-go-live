@@ -20,7 +20,7 @@ This MCP server uses **HTTP transport** (specifically Streamable-HTTP), which re
 
 ### Step 1: Start the MCP Server
 
-The MCP server must be running as a web service on port 3000:
+The MCP server must be running as a web service on port 5000:
 
 ```bash
 cd mcp-server
@@ -31,7 +31,7 @@ uv run python -m mcp_golive.server
 You should see output like:
 ```
 📦 Transport:       Streamable-HTTP
-🔗 Server URL:      http://127.0.0.1:3000/mcp
+🔗 Server URL:      http://127.0.0.1:5000/mcp
 ```
 
 ### Step 2: Configure Claude Code with mcp-remote
@@ -47,7 +47,7 @@ Update your `~/.config/claude/mcp_settings.json`:
       "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:3000/mcp"
+        "http://localhost:5000/mcp"
       ]
     }
   }
@@ -120,7 +120,7 @@ After completing the setup:
 
 1. Check that the MCP server is running:
    ```bash
-   curl http://localhost:3000/mcp
+   curl http://localhost:5000/mcp
    # Should return MCP server info
    ```
 
@@ -141,7 +141,7 @@ After completing the setup:
 ## Common Issues
 
 ### "Connection refused" error
-- Make sure the MCP server is running on port 3000
+- Make sure the MCP server is running on port 5000
 - Check that no firewall is blocking the connection
 
 ### "command not found: npx" error

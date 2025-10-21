@@ -4,11 +4,14 @@ A proof of concept service for capturing, storing, and reviewing MCP server go-l
 
 ## What is this?
 
-This POC validates a simple workflow:
+This POC validates a complete workflow:
 
 1. **Developer** completes MCP go-live checklist using the `mcp-go-live` skill in Claude Code
 2. **Developer** submits the generated report via `submit_report()` MCP tool
-3. **Platform team** reviews and approves/rejects via `list_servers()` tool or API
+3. **Platform team** reviews and approves/rejects via:
+   - **Web UI** (React frontend) - visual dashboard and report viewer
+   - **MCP tool** `list_servers()` - within Claude Code
+   - **API** - direct HTTP calls
 
 ## Architecture
 
@@ -23,14 +26,15 @@ This POC validates a simple workflow:
 ┌─────────────────┐
 │ MCP Server      │  submit_report()
 │ (Python)        │ ────────────────► ┌──────────────┐
-└─────────────────┘                   │ Rust API     │
-                                      │ (Axum)       │
-                                      └──────┬───────┘
-                                             │
-                                             ▼
-                                      ┌──────────────┐
-                                      │ PostgreSQL   │
-                                      └──────────────┘
+└─────────────────┘                   │ Rust API     │◄──── Platform Team
+                                      │ (Axum)       │      (Web UI)
+                                      └──────┬───────┘          │
+                                             │                  │
+                                             ▼                  ▼
+                                      ┌──────────────┐   ┌─────────────┐
+                                      │ PostgreSQL   │   │ React App   │
+                                      └──────────────┘   │ (Bifrost)   │
+                                                         └─────────────┘
 ```
 
 ## Components
@@ -59,8 +63,12 @@ This POC validates a simple workflow:
 # One-time setup
 just setup
 
-# Start all services
+# Start all services (API + Frontend)
 just start-all
+
+# Or start individually
+just run-api        # Start API only
+just run-frontend   # Start frontend only
 
 # Check status
 just status
@@ -71,6 +79,11 @@ just test-workflow
 # Stop services
 just stop-all
 ```
+
+**Access Points:**
+- Frontend: http://localhost:5173
+- API: http://localhost:8080
+- Database: localhost:5433
 
 ### Option 2: Manual Setup
 
@@ -88,14 +101,21 @@ export DATABASE_URL="postgres://postgres:password@localhost/golive"
 cargo run
 # Running on http://localhost:8080
 
-# 3. Start MCP Server
+# 3. Start Frontend (in new terminal)
+cd frontend
+npm install
+npm run dev
+# Running on http://localhost:5173
+
+# 4. Start MCP Server (in new terminal)
 cd mcp-server
 uv sync
 export API_BASE_URL="http://localhost:8080/api/v1"
 uv run python -m mcp_golive.server
 
-# 4. Test
+# 5. Test
 curl http://localhost:8080/healthz
+# Open http://localhost:5173 in browser
 ```
 
 ## MCP Tools
@@ -136,15 +156,16 @@ List submitted servers for review.
 
 ```bash
 # Setup & Installation
-just setup              # Install all dependencies (Rust + Python)
+just setup              # Install all dependencies (Rust + Python + Node)
 just install            # Install dependencies
 
 # Service Management
-just start-all          # Start all services in background
+just start-all          # Start all services (API + Frontend)
 just stop-all           # Stop all services
 just status             # Show service status
-just run                # Run both services (API in bg, MCP in fg)
+just run                # Run API and MCP server
 just run-api            # Run only Rust API
+just run-frontend       # Run only React frontend
 just run-mcp            # Run only MCP server
 
 # Database
@@ -156,13 +177,14 @@ just db-view            # View reports in DB
 # Testing
 just test               # Run all tests
 just test-api           # Test Rust API only
+just test-frontend      # Test React frontend only
 just test-mcp           # Test MCP server only
 just test-workflow      # Test full workflow
 just test-integration   # Full integration test
 
 # Code Quality
-just fmt                # Format all code
-just lint               # Lint all code
+just fmt                # Format all code (Rust + TypeScript)
+just lint               # Lint all code (Rust + TypeScript)
 just check              # Run all checks
 
 # Utilities
@@ -178,6 +200,13 @@ just info               # Show project info
 - `test-health`, `test-submit`, `test-list`
 - See `rust-api/justfile` for all commands
 
+**React Frontend** (`cd frontend && npm <command>`):
+- `npm run dev` - Start dev server
+- `npm test` - Run tests
+- `npm run build` - Build for production
+- `npm run lint` - Lint TypeScript
+- See `frontend/README.md` for all commands
+
 **MCP Server** (`cd mcp-server && just <command>`):
 - `run`, `test`, `test-manual`
 - `test-submit`, `test-list`, `test-list-pending`
@@ -189,16 +218,19 @@ just info               # Show project info
 # 1. Developer submits report (via MCP tool in Claude Code)
 # Result: Report stored with status "pending_review"
 
-# 2. Platform team lists pending reports
+# 2. Platform team reviews reports (multiple options):
+
+# Option A: Web UI (recommended)
+# Open http://localhost:5173
+# - View dashboard with statistics
+# - Click on report to view details
+# - Click "Approve" or "Reject" button
+# - Add review notes
+# - Submit
+
+# Option B: API
 curl http://localhost:8080/api/v1/reports?status=pending_review
-
-# Or using MCP server tool
-cd mcp-server && just test-list-pending
-
-# 3. Platform team reviews full report
 curl http://localhost:8080/api/v1/reports/{id}
-
-# 4. Platform team approves
 curl -X PATCH http://localhost:8080/api/v1/reports/{id}/status \
   -H "Content-Type: application/json" \
   -d '{
@@ -206,6 +238,9 @@ curl -X PATCH http://localhost:8080/api/v1/reports/{id}/status \
     "reviewed_by": "platform@intility.no",
     "review_notes": "All checks passed"
   }'
+
+# Option C: MCP tool (in Claude Code)
+cd mcp-server && just test-list-pending
 ```
 
 ## Database Schema
@@ -232,12 +267,15 @@ CREATE TABLE mcp_server_reports (
 - ✅ List/view/approve reports
 - ✅ Basic data persistence
 - ✅ Simple workflow validation
+- ✅ Web UI (React + Bifrost)
+- ✅ Dashboard with statistics
+- ✅ Report filtering and search
+- ✅ Markdown rendering
 
 **Not Included (Post-POC):**
 - ❌ Automated validation (GitHub API, kubectl)
 - ❌ Code analysis tools
-- ❌ OBO authentication
-- ❌ Web UI
+- ❌ OBO authentication (MSAL configured, not enforced)
 - ❌ Email notifications
 - ❌ Audit logging
 - ❌ OpenTelemetry
@@ -266,17 +304,27 @@ cd rust-api && cargo test
 # Run Python tests
 cd mcp-server && uv run pytest
 
+# Run React tests
+cd frontend && npm test
+
 # Integration test
+just test-integration
+
+# Or manually:
 docker-compose up -d
 curl -X POST http://localhost:8080/api/v1/reports \
   -H "Content-Type: application/json" \
   -d '{"server_name":"test","repository_url":"https://github.com/test","developer_email":"test@test.com","report_data":"# Test"}'
+# Then visit http://localhost:5173 to see it in UI
 ```
 
 ## Tech Stack
 
 - **Rust + Axum** - Fast, type-safe API
 - **PostgreSQL + sqlx** - Reliable database with type-checked queries
+- **React 19 + TypeScript** - Modern UI with type safety
+- **Vite + Bifrost** - Fast dev server + Intility design system
+- **TanStack Query** - Data fetching and caching
 - **Python + uv** - Fast package management
 - **MCP Protocol** - Model Context Protocol for Claude Code integration
 

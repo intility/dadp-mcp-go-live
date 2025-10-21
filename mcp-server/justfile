@@ -1,0 +1,180 @@
+# Justfile for mcp-golive server
+# Run `just --list` to see all available commands
+
+# Default recipe (runs when you just type `just`)
+default:
+    @just --list
+
+# ============================================================================
+# Setup & Dependencies
+# ============================================================================
+
+# Install uv if not present and sync dependencies
+setup:
+    @echo "Installing/updating uv..."
+    @command -v uv >/dev/null 2>&1 || pip install uv
+    @echo "Syncing dependencies..."
+    uv sync
+    @echo "Setup complete!"
+
+# Install/sync dependencies
+install:
+    uv sync
+
+# Update dependencies
+update:
+    uv sync --upgrade
+
+# ============================================================================
+# Development
+# ============================================================================
+
+# Run the MCP server in stdio mode (default, for Claude Code)
+run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    echo "Starting MCP server in stdio mode..." >&2
+    echo "API URL: $API_BASE_URL" >&2
+    uv run python -m mcp_golive.server
+
+# Run the MCP server in HTTP mode (for --transport http)
+run-http:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    export MCP_PORT="${MCP_PORT:-3000}"
+    echo "Starting MCP server in HTTP mode on port $MCP_PORT..."
+    echo "API URL: $API_BASE_URL"
+    echo "MCP URL: http://localhost:$MCP_PORT/sse"
+    uv run python -m mcp_golive.server --http
+
+# Run the MCP server with custom API URL
+run-custom URL:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="{{URL}}"
+    echo "Starting MCP server..." >&2
+    echo "API URL: $API_BASE_URL" >&2
+    uv run python -m mcp_golive.server
+
+# Run the MCP server in HTTP mode with custom port
+run-http-port PORT:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    export MCP_PORT="{{PORT}}"
+    echo "Starting MCP server in HTTP mode on port $MCP_PORT..."
+    echo "API URL: $API_BASE_URL"
+    echo "MCP URL: http://localhost:$MCP_PORT/sse"
+    uv run python -m mcp_golive.server --http
+
+# ============================================================================
+# Testing
+# ============================================================================
+
+# Run all tests
+test:
+    uv run pytest
+
+# Run tests with verbose output
+test-verbose:
+    uv run pytest -v
+
+# Run tests with coverage
+test-coverage:
+    uv run pytest --cov=mcp_golive --cov-report=html --cov-report=term
+
+# Run manual integration test (requires API running)
+test-manual:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    echo "Running manual integration test..."
+    echo "API URL: $API_BASE_URL"
+    uv run python test_manual.py
+
+# ============================================================================
+# Code Quality
+# ============================================================================
+
+# Run type checker
+typecheck:
+    uv run mypy src/mcp_golive --ignore-missing-imports || echo "mypy not installed (optional)"
+
+# Format code with black
+fmt:
+    uv run black src tests || echo "black not installed (optional)"
+
+# Check code formatting
+fmt-check:
+    uv run black --check src tests || echo "black not installed (optional)"
+
+# Run linter
+lint:
+    uv run ruff check src tests || echo "ruff not installed (optional)"
+
+# Run all checks
+check: test lint fmt-check
+    @echo "All checks passed!"
+
+# ============================================================================
+# MCP Server Testing (with running API)
+# ============================================================================
+
+# Test submit_report tool (calls test_manual.py)
+test-submit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    echo "Testing submit_report tool..."
+    uv run python -c "import asyncio; from mcp_golive.server import submit_report; r = asyncio.run(submit_report({'server_name': 'test-justfile', 'repository_url': 'https://github.com/test/just-$(date +%s)', 'developer_email': 'test@intility.no', 'report_markdown': '# Test'})); print(r[0].text)"
+
+# Test list_servers tool
+test-list:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    echo "Testing list_servers tool..."
+    uv run python -c "import asyncio; from mcp_golive.server import list_servers; r = asyncio.run(list_servers({'status': 'all'})); print(r[0].text)"
+
+# Test list pending reviews
+test-list-pending:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}"
+    echo "Testing list_servers with pending filter..."
+    uv run python -c "import asyncio; from mcp_golive.server import list_servers; r = asyncio.run(list_servers({'status': 'pending_review'})); print(r[0].text)"
+
+# ============================================================================
+# Utilities
+# ============================================================================
+
+# Clean build artifacts and cache
+clean:
+    rm -rf .venv
+    rm -rf .pytest_cache
+    rm -rf htmlcov
+    rm -rf .coverage
+    rm -rf **/__pycache__
+    rm -rf **/*.pyc
+    @echo "Cleaned!"
+
+# Show project info
+info:
+    @echo "Project: mcp-golive"
+    @echo "Python: $(python3 --version)"
+    @command -v uv >/dev/null 2>&1 && echo "uv: $(uv --version)" || echo "uv: not installed"
+    @echo ""
+    @echo "API URL: ${API_BASE_URL:-http://localhost:8080/api/v1}"
+    @echo ""
+    @echo "Virtual env: $([ -d .venv ] && echo 'exists' || echo 'not created')"
+
+# Generate requirements.txt from pyproject.toml
+freeze:
+    uv pip freeze > requirements.txt
+    @echo "Generated requirements.txt"
+
+# Show this help
+help:
+    @just --list

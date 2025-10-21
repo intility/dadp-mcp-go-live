@@ -1,0 +1,284 @@
+# Justfile for golive-api
+# Run `just --list` to see all available commands
+
+# Default recipe (runs when you just type `just`)
+default:
+    @just --list
+
+# ============================================================================
+# Setup & Dependencies
+# ============================================================================
+
+# Install required tools and dependencies
+setup:
+    @echo "Installing Rust toolchain..."
+    rustup update stable
+    @echo "Installing cargo tools..."
+    cargo install sqlx-cli --no-default-features --features postgres
+    @echo "Setup complete!"
+
+# Install dependencies
+install:
+    cargo fetch
+
+# ============================================================================
+# Database Management
+# ============================================================================
+
+# Start PostgreSQL in Docker
+db-start:
+    @echo "Starting PostgreSQL..."
+    docker run -d \
+      --name golive-postgres \
+      -e POSTGRES_PASSWORD=password \
+      -e POSTGRES_DB=golive \
+      -p 5433:5432 \
+      postgres:16-alpine || echo "Container already exists, starting..."
+    @docker start golive-postgres 2>/dev/null || true
+    @echo "Waiting for PostgreSQL to be ready..."
+    @sleep 2
+    @echo "PostgreSQL is ready!"
+
+# Stop PostgreSQL
+db-stop:
+    @echo "Stopping PostgreSQL..."
+    docker stop golive-postgres || true
+
+# Remove PostgreSQL container
+db-remove:
+    @echo "Removing PostgreSQL container..."
+    docker stop golive-postgres || true
+    docker rm golive-postgres || true
+
+# Reset database (stop, remove, start fresh)
+db-reset: db-remove db-start
+    @sleep 2
+    @echo "Running migrations..."
+    @just migrate
+    @echo "Database reset complete!"
+
+# Run database migrations
+migrate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DATABASE_URL="${DATABASE_URL:-postgres://postgres:password@localhost:5433/golive}"
+    echo "Running migrations against: $DATABASE_URL"
+    sqlx migrate run --source ./migrations
+
+# Connect to database with psql
+db-connect:
+    docker exec -it golive-postgres psql -U postgres -d golive
+
+# View all reports in database
+db-view:
+    docker exec -it golive-postgres psql -U postgres -d golive -c "SELECT id, server_name, status, submitted_at FROM mcp_server_reports ORDER BY submitted_at DESC;"
+
+# Clear all reports from database
+db-clear:
+    docker exec -it golive-postgres psql -U postgres -d golive -c "TRUNCATE mcp_server_reports;"
+    @echo "All reports cleared!"
+
+# ============================================================================
+# Development
+# ============================================================================
+
+# Build the project
+build:
+    cargo build
+
+# Build for release
+build-release:
+    cargo build --release
+
+# Run the API server
+run: db-start
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DATABASE_URL="${DATABASE_URL:-postgres://postgres:password@localhost:5433/golive}"
+    export PORT="${PORT:-8080}"
+    export RUST_LOG="${RUST_LOG:-golive_api=debug,tower_http=debug}"
+    echo "Starting server on http://0.0.0.0:$PORT"
+    cargo run
+
+# Run with auto-reload on file changes (requires cargo-watch)
+watch:
+    cargo watch -x run
+
+# ============================================================================
+# Testing
+# ============================================================================
+
+# Run all tests
+test:
+    cargo test
+
+# Run tests with output
+test-verbose:
+    cargo test -- --nocapture
+
+# Run tests with coverage (requires cargo-tarpaulin)
+test-coverage:
+    cargo tarpaulin --out Html --output-dir coverage
+
+# ============================================================================
+# Code Quality
+# ============================================================================
+
+# Run clippy linter
+lint:
+    cargo clippy -- -D warnings
+
+# Run clippy with all features
+lint-all:
+    cargo clippy --all-features -- -D warnings
+
+# Format code
+fmt:
+    cargo fmt
+
+# Check formatting without modifying files
+fmt-check:
+    cargo fmt -- --check
+
+# Run all checks (fmt, clippy, test)
+check: fmt-check lint test
+    @echo "All checks passed!"
+
+# ============================================================================
+# API Testing
+# ============================================================================
+
+# Test health check endpoint
+test-health:
+    @echo "Testing health check..."
+    curl -s http://localhost:8080/healthz
+    @echo ""
+
+# Submit a test report
+test-submit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Submitting test report..."
+    curl -X POST http://localhost:8080/api/v1/reports \
+      -H "Content-Type: application/json" \
+      -d "{\"server_name\":\"test-mcp-server\",\"repository_url\":\"https://github.com/test/test-$(date +%s)\",\"developer_email\":\"test@intility.no\",\"report_data\":\"# Test Report\\n\\nGenerated at $(date)\"}" | jq
+    echo ""
+
+# List all reports
+test-list:
+    @echo "Listing all reports..."
+    curl -s http://localhost:8080/api/v1/reports | jq
+    @echo ""
+
+# List pending reports
+test-list-pending:
+    @echo "Listing pending reports..."
+    curl -s http://localhost:8080/api/v1/reports?status=pending_review | jq
+    @echo ""
+
+# Get a specific report (requires REPORT_ID env var)
+test-get:
+    @echo "Getting report ${REPORT_ID}..."
+    curl -s http://localhost:8080/api/v1/reports/${REPORT_ID} | jq
+    @echo ""
+
+# Approve a report (requires REPORT_ID env var)
+test-approve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Approving report ${REPORT_ID}..."
+    curl -X PATCH http://localhost:8080/api/v1/reports/${REPORT_ID}/status \
+      -H "Content-Type: application/json" \
+      -d "{\"status\":\"approved\",\"reviewed_by\":\"platform@intility.no\",\"review_notes\":\"All checks passed. Approved for production.\"}" | jq
+    echo ""
+
+# Reject a report (requires REPORT_ID env var)
+test-reject:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Rejecting report ${REPORT_ID}..."
+    curl -X PATCH http://localhost:8080/api/v1/reports/${REPORT_ID}/status \
+      -H "Content-Type: application/json" \
+      -d "{\"status\":\"rejected\",\"reviewed_by\":\"platform@intility.no\",\"review_notes\":\"Security review failed. Please address issues and resubmit.\"}" | jq
+    echo ""
+
+# Run full integration test
+test-integration: db-reset
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Starting integration test..."
+
+    # Start server in background
+    export DATABASE_URL="postgres://postgres:password@localhost:5433/golive"
+    export PORT="8080"
+    cargo run &
+    SERVER_PID=$!
+
+    # Wait for server to start
+    echo "Waiting for server to start..."
+    sleep 3
+
+    # Run tests
+    echo ""
+    echo "=== Test 1: Health Check ==="
+    just test-health
+
+    echo ""
+    echo "=== Test 2: Submit Report ==="
+    RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/reports \
+      -H "Content-Type: application/json" \
+      -d "{\"server_name\":\"integration-test-server\",\"repository_url\":\"https://github.com/test/integration-test\",\"developer_email\":\"test@intility.no\",\"report_data\":\"# Integration Test Report\"}")
+    echo "$RESPONSE" | jq
+    REPORT_ID=$(echo "$RESPONSE" | jq -r '.id')
+    echo "Created report: $REPORT_ID"
+
+    echo ""
+    echo "=== Test 3: List Reports ==="
+    just test-list
+
+    echo ""
+    echo "=== Test 4: Get Report ==="
+    export REPORT_ID
+    just test-get
+
+    echo ""
+    echo "=== Test 5: Approve Report ==="
+    just test-approve
+
+    echo ""
+    echo "=== Test 6: List Approved Reports ==="
+    curl -s http://localhost:8080/api/v1/reports?status=approved | jq
+
+    # Cleanup
+    echo ""
+    echo "Stopping server..."
+    kill $SERVER_PID || true
+
+    echo ""
+    echo "✅ Integration test complete!"
+
+# ============================================================================
+# Utilities
+# ============================================================================
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Show project information
+info:
+    @echo "Project: golive-api"
+    @echo "Rust version: $(rustc --version)"
+    @echo "Cargo version: $(cargo --version)"
+    @echo ""
+    @echo "Database URL: ${DATABASE_URL:-postgres://postgres:password@localhost:5433/golive}"
+    @echo "Server Port: ${PORT:-8080}"
+
+# Generate sqlx offline metadata for CI/CD (requires DATABASE_URL)
+sqlx-prepare:
+    cargo sqlx prepare -- --lib
+
+# Show this help
+help:
+    @just --list

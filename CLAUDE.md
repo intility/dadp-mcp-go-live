@@ -161,6 +161,7 @@ npm run build
 
 **Features:**
 - Markdown rendering for reports
+- **Structured data display** - Shows risk levels, status, and critical issues from `report_json`
 - Real-time data updates with TanStack Query
 - Bifrost design system components
 - Responsive layout

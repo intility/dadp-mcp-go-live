@@ -46,7 +46,7 @@ run-http:
     export MCP_PORT="${MCP_PORT:-3000}"
     echo "Starting MCP server in HTTP mode on port $MCP_PORT..."
     echo "API URL: $API_BASE_URL"
-    echo "MCP URL: http://localhost:$MCP_PORT/sse"
+    echo "MCP URL: http://localhost:$MCP_PORT/mcp"
     uv run python -m mcp_golive.server --http
 
 # Run the MCP server with custom API URL
@@ -66,7 +66,7 @@ run-http-port PORT:
     export MCP_PORT="{{PORT}}"
     echo "Starting MCP server in HTTP mode on port $MCP_PORT..."
     echo "API URL: $API_BASE_URL"
-    echo "MCP URL: http://localhost:$MCP_PORT/sse"
+    echo "MCP URL: http://localhost:$MCP_PORT/mcp"
     uv run python -m mcp_golive.server --http
 
 # ============================================================================

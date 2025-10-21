@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     )
     port: int = Field(
         default=3000,
-        description="Port for HTTP transport"
+        description="Port for HTTP transport",
+        alias="MCP_PORT"
     )
     host: str = Field(
         default="0.0.0.0",

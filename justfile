@@ -122,7 +122,7 @@ run: db-start
     # Cleanup
     kill $API_PID 2>/dev/null || true
 
-# Start all services in background (for testing)
+# Start all services in background (for testing - returns immediately)
 start-all: db-start
     #!/usr/bin/env bash
     set -euo pipefail
@@ -157,6 +157,29 @@ start-all-http: db-start
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # Cleanup function
+    cleanup() {
+        echo ""
+        echo "==> Stopping services..."
+        if [ -f /tmp/golive-api.pid ]; then
+            kill $(cat /tmp/golive-api.pid) 2>/dev/null || true
+            rm /tmp/golive-api.pid
+            echo "✅ Stopped Rust API"
+        fi
+        if [ -f /tmp/golive-mcp.pid ]; then
+            kill $(cat /tmp/golive-mcp.pid) 2>/dev/null || true
+            rm /tmp/golive-mcp.pid
+            echo "✅ Stopped MCP Server"
+        fi
+        # Cleanup any remaining processes
+        pkill -f "cargo run" 2>/dev/null || true
+        pkill -f "mcp_golive.server" 2>/dev/null || true
+        exit 0
+    }
+
+    # Set trap for cleanup on exit
+    trap cleanup INT TERM EXIT
+
     echo "==> Starting Rust API in background..."
     cd rust-api
     export DATABASE_URL="${DATABASE_URL:-postgres://postgres:password@localhost:5433/golive}"
@@ -189,8 +212,8 @@ start-all-http: db-start
     echo "Waiting for MCP server to start..."
     sleep 2
 
-    if curl -s http://localhost:3000/sse >/dev/null 2>&1; then
-        echo "✅ MCP is running on http://localhost:3000/sse"
+    if curl -s http://localhost:3000/mcp >/dev/null 2>&1; then
+        echo "✅ MCP is running on http://localhost:3000/mcp"
         echo "   Logs: /tmp/golive-mcp.log"
         echo "   PID: $(cat /tmp/golive-mcp.pid)"
     else
@@ -200,10 +223,15 @@ start-all-http: db-start
     echo ""
     echo "All services started!"
     echo "  - API: http://localhost:8080"
-    echo "  - MCP: http://localhost:3000/sse"
+    echo "  - MCP: http://localhost:3000/mcp"
     echo "  - PostgreSQL: localhost:5433"
     echo ""
-    echo "To stop: just stop-all"
+    echo "Press Ctrl+C to stop all services"
+    echo ""
+
+    # Keep the script running until interrupted
+    echo "Services are running. Monitoring logs..."
+    tail -f /tmp/golive-api.log /tmp/golive-mcp.log
 
 # Stop all background services
 stop-all:
@@ -411,8 +439,8 @@ status:
     fi
 
     # Check MCP HTTP
-    if curl -s http://localhost:3000/sse >/dev/null 2>&1; then
-        echo "✅ MCP Server:  running on http://localhost:3000/sse (HTTP mode)"
+    if curl -s http://localhost:3000/mcp >/dev/null 2>&1; then
+        echo "✅ MCP Server:  running on http://localhost:3000/mcp (HTTP mode)"
     else
         echo "❌ MCP Server:  not running (HTTP mode)"
     fi

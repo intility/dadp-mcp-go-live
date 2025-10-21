@@ -10,6 +10,7 @@ export interface Report {
   repository_url: string;
   developer_email: string;
   report_data: string;
+  report_json: Record<string, any>;
   status: ReportStatus;
   submitted_at: string;
   reviewed_at: string | null;
@@ -34,6 +35,7 @@ export interface SubmitReportRequest {
   repository_url: string;
   developer_email: string;
   report_data: string;
+  report_json: Record<string, any>;
 }
 
 export interface SubmitReportResponse {

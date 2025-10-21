@@ -58,5 +58,20 @@ This is a sample report for ${summary.server_name}.
 
 ## Testing
 All tests passing.`,
+    report_json: {
+      report_version: "1.0",
+      server_info: {
+        server_name: summary.server_name,
+        repository_url: summary.repository_url,
+        developer_email: summary.developer_email,
+      },
+      executive_summary: {
+        overall_status: summary.status === "approved" ? "APPROVED" : "NEEDS_REVIEW",
+        critical_issues_count: summary.status === "rejected" ? 2 : 0,
+      },
+      phase1_security: {
+        risk_level: summary.status === "rejected" ? "HIGH" : "LOW",
+      },
+    },
   };
 };

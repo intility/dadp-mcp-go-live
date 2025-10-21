@@ -152,8 +152,7 @@ WHERE report_json->'phase1_security'->>'risk_level' = 'HIGH';
 
 # Query by approval status (NEW)
 SELECT server_name, report_json->'executive_summary'->>'overall_status' as status
-FROM mcp_server_reports
-WHERE report_json IS NOT NULL;
+FROM mcp_server_reports;
 ```
 
 ---
@@ -163,21 +162,9 @@ WHERE report_json IS NOT NULL;
 **Base:** `http://localhost:8080/api/v1`
 
 ### POST /reports
-Submit report (with optional structured JSON data).
+Submit report with structured JSON data (**REQUIRED**).
 
-**Markdown only (backward compatible):**
-```bash
-curl -X POST http://localhost:8080/api/v1/reports \
-  -H "Content-Type: application/json" \
-  -d '{
-    "server_name": "mcp-servicenow",
-    "repository_url": "https://github.com/intility/mcp-servicenow",
-    "developer_email": "dev@intility.no",
-    "report_data": "# Report..."
-  }'
-```
-
-**With structured JSON data (NEW):**
+**Example:**
 ```bash
 curl -X POST http://localhost:8080/api/v1/reports \
   -H "Content-Type: application/json" \
@@ -203,7 +190,7 @@ curl -X POST http://localhost:8080/api/v1/reports \
   }'
 ```
 
-**Note:** The `report_json` field is optional and stores structured data conforming to the MCPGoLiveReport Pydantic model from the mcp-go-live skill.
+**Note:** The `report_json` field is **REQUIRED** and must contain structured data conforming to the MCPGoLiveReport Pydantic model from the mcp-go-live skill.
 
 ### GET /reports?status={status}
 List reports.
@@ -325,30 +312,64 @@ uv run python test_manual.py
 
 ### Claude Code Configuration
 
+**IMPORTANT:** This MCP server uses **HTTP transport** (not stdio), which means it runs as a remote web service. Claude Code connects to it using the `mcp-remote` NPX package.
+
+#### Step 1: Start the MCP Server
+
+First, start the MCP server (it will run on port 3000 by default):
+
+```bash
+cd mcp-server
+export API_BASE_URL="http://localhost:8080/api/v1"
+uv run python -m mcp_golive.server
+```
+
+The server will display:
+```
+📦 Transport:       Streamable-HTTP
+🔗 Server URL:      http://127.0.0.1:3000/mcp
+```
+
+#### Step 2: Configure Claude Code
+
 Add to your MCP settings (`~/.config/claude/mcp_settings.json`):
 
 ```json
 {
   "mcpServers": {
     "mcp-golive": {
-      "command": "uv",
+      "command": "npx",
       "args": [
-        "--directory",
-        "/absolute/path/to/mcp-go-live-service/mcp-server",
-        "run",
-        "python",
-        "-m",
-        "mcp_golive.server"
+        "mcp-remote",
+        "http://localhost:3000/mcp"
+      ]
+    }
+  }
+}
+```
+
+**For remote deployment (e.g., production):**
+
+```json
+{
+  "mcpServers": {
+    "mcp-golive": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://your-domain.com/mcp",
+        "--header",
+        "Authorization: Bearer ${AUTH_TOKEN}"
       ],
       "env": {
-        "API_BASE_URL": "http://localhost:8080/api/v1"
+        "AUTH_TOKEN": "your-auth-token-here"
       }
     }
   }
 }
 ```
 
-**Important:** Replace `/absolute/path/to/` with the actual path to your repository.
+**Note:** The `mcp-remote` package handles the HTTP session management (session IDs, etc.) automatically.
 
 ### MCP Tools
 
@@ -360,7 +381,7 @@ Submit go-live report from Claude Code to the platform team.
 - `repository_url` (string, required) - GitHub repository URL
 - `developer_email` (string, required) - Developer's email
 - `report_markdown` (string, required) - Complete report in markdown format
-- `report_json` (string, optional) - **Phase 2:** Structured JSON data as a JSON string
+- `report_json` (string, **REQUIRED**) - Structured JSON data as a JSON string (must be valid JSON)
 
 **Returns:** Confirmation with report ID and status
 
@@ -566,6 +587,44 @@ just test-health
 # If not running
 just run
 ```
+
+### MCP Server: "No valid session ID provided"
+
+This error means Claude Code is not configured correctly for HTTP transport.
+
+**Symptoms:**
+- Error when calling `submit_report` or `list_servers` tools
+- Message: "Error POSTing to endpoint (HTTP 400): Bad Request: No valid session ID provided"
+
+**Cause:**
+You're using the wrong configuration in `mcp_settings.json`. HTTP MCP servers require the `mcp-remote` package.
+
+**Solution:**
+1. Make sure the MCP server is running:
+   ```bash
+   cd mcp-server
+   export API_BASE_URL="http://localhost:8080/api/v1"
+   uv run python -m mcp_golive.server
+   ```
+
+2. Update your `~/.config/claude/mcp_settings.json` to use `mcp-remote`:
+   ```json
+   {
+     "mcpServers": {
+       "mcp-golive": {
+         "command": "npx",
+         "args": [
+           "mcp-remote",
+           "http://localhost:3000/mcp"
+         ]
+       }
+     }
+   }
+   ```
+
+3. Restart Claude Code
+
+**Note:** Do NOT use the `uv run python -m mcp_golive.server` configuration directly in `mcp_settings.json` - that's for stdio transport only. This server uses HTTP transport.
 
 ### Build fails with dependency errors
 

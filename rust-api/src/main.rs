@@ -25,8 +25,7 @@ struct Report {
     repository_url: String,
     developer_email: String,
     report_data: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    report_json: Option<JsonValue>,
+    report_json: JsonValue,
     status: String,
     submitted_at: DateTime<Utc>,
     reviewed_at: Option<DateTime<Utc>>,
@@ -40,8 +39,7 @@ struct CreateReportRequest {
     repository_url: String,
     developer_email: String,
     report_data: String,
-    #[serde(default)]
-    report_json: Option<JsonValue>,
+    report_json: JsonValue,
 }
 
 #[derive(Debug, Deserialize)]
@@ -135,16 +133,10 @@ async fn create_report(
         )
     })?;
 
-    let json_status = if report.report_json.is_some() {
-        "with structured JSON"
-    } else {
-        "markdown only"
-    };
     tracing::info!(
-        "Created report: {} for {} ({})",
+        "Created report: {} for {} (with structured JSON)",
         report.id,
-        report.server_name,
-        json_status
+        report.server_name
     );
     Ok((StatusCode::CREATED, Json(report)))
 }
@@ -282,8 +274,7 @@ async fn get_risk_distribution(
             report_json->'phase1_security'->>'risk_level' as "risk_level?",
             COUNT(*) as "count!"
         FROM mcp_server_reports
-        WHERE report_json IS NOT NULL
-          AND report_json->'phase1_security'->>'risk_level' IS NOT NULL
+        WHERE report_json->'phase1_security'->>'risk_level' IS NOT NULL
         GROUP BY report_json->'phase1_security'->>'risk_level'
         "#
     )
@@ -329,14 +320,7 @@ async fn get_report_issues(
         )
     })?;
 
-    let json_data = report.report_json.ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: "No structured data available for this report".to_string(),
-            }),
-        )
-    })?;
+    let json_data = &report.report_json;
 
     // Extract issues from JSON
     let critical = extract_issues(&json_data, "critical_issues");
@@ -364,13 +348,8 @@ async fn get_analytics_summary(
         .await
         .unwrap_or(0);
 
-    // With structured data
-    let with_json: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM mcp_server_reports WHERE report_json IS NOT NULL"
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap_or(0);
+    // With structured data (all reports now have JSON)
+    let with_json = total;
 
     // By status
     let status_results = sqlx::query!(
@@ -392,7 +371,6 @@ async fn get_analytics_summary(
             report_json->'phase1_security'->>'risk_level' as "risk?",
             COUNT(*) as "count!"
         FROM mcp_server_reports
-        WHERE report_json IS NOT NULL
         GROUP BY report_json->'phase1_security'->>'risk_level'
         "#
     )
@@ -506,9 +484,10 @@ mod tests {
 
     #[test]
     fn test_create_report_request_deserialize() {
-        let json = r##"{"server_name":"test","repository_url":"https://github.com/test/test","developer_email":"test@test.com","report_data":"# Test"}"##;
+        let json = r##"{"server_name":"test","repository_url":"https://github.com/test/test","developer_email":"test@test.com","report_data":"# Test","report_json":{"version":"1.0"}}"##;
         let req: CreateReportRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.server_name, "test");
+        assert_eq!(req.report_json["version"], "1.0");
     }
 
     #[test]
@@ -519,20 +498,6 @@ mod tests {
     }
 
     // New tests for JSON support
-    #[test]
-    fn test_create_report_request_without_json() {
-        let json = r##"{
-            "server_name": "test-server",
-            "repository_url": "https://github.com/test/test",
-            "developer_email": "test@example.com",
-            "report_data": "Test Report"
-        }"##;
-
-        let req: CreateReportRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.server_name, "test-server");
-        assert!(req.report_json.is_none());
-    }
-
     #[test]
     fn test_create_report_request_with_json() {
         let json = r##"{
@@ -550,10 +515,8 @@ mod tests {
 
         let req: CreateReportRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.server_name, "test-server");
-        assert!(req.report_json.is_some());
-
-        let json_data = req.report_json.unwrap();
-        assert_eq!(json_data["report_version"], "1.0");
+        assert_eq!(req.report_json["report_version"], "1.0");
+        assert_eq!(req.report_json["server_info"]["server_name"], "test-server");
     }
 
     #[test]
@@ -564,12 +527,12 @@ mod tests {
             repository_url: "https://github.com/test/test".to_string(),
             developer_email: "test@example.com".to_string(),
             report_data: "# Test".to_string(),
-            report_json: Some(serde_json::json!({
+            report_json: serde_json::json!({
                 "report_version": "1.0",
                 "server_info": {
                     "server_name": "test-server"
                 }
-            })),
+            }),
             status: "pending_review".to_string(),
             submitted_at: Utc::now(),
             reviewed_at: None,
@@ -580,27 +543,7 @@ mod tests {
         let json_str = serde_json::to_string(&report).unwrap();
         assert!(json_str.contains("report_json"));
         assert!(json_str.contains("report_version"));
-    }
-
-    #[test]
-    fn test_report_serialization_without_json() {
-        let report = Report {
-            id: Uuid::new_v4(),
-            server_name: "test-server".to_string(),
-            repository_url: "https://github.com/test/test".to_string(),
-            developer_email: "test@example.com".to_string(),
-            report_data: "# Test".to_string(),
-            report_json: None,
-            status: "pending_review".to_string(),
-            submitted_at: Utc::now(),
-            reviewed_at: None,
-            reviewed_by: None,
-            review_notes: None,
-        };
-
-        let json_str = serde_json::to_string(&report).unwrap();
-        // With skip_serializing_if, null fields are omitted
-        assert!(!json_str.contains("report_json") || json_str.contains("\"report_json\":null"));
+        assert!(json_str.contains("test-server"));
     }
 
     // Phase 3: Analytics tests

@@ -23,7 +23,7 @@ async def submit_report(
     repository_url: str,
     developer_email: str,
     report_markdown: str,
-    report_json: str | None = None,
+    report_json: str,
 ) -> str:
     """Submit an MCP server go-live report to the platform team for review.
 
@@ -31,25 +31,27 @@ async def submit_report(
     security and infrastructure validation. The report will be stored and
     marked as 'pending_review' until the platform team approves or rejects it.
 
+    IMPORTANT: This tool requires the MCP server to be running via HTTP transport.
+    If you get "No valid session ID provided" error, check the CLAUDE.md file for
+    correct configuration using mcp-remote.
+
     Args:
         server_name: Name of the MCP server (e.g., 'mcp-servicenow')
         repository_url: Full GitHub repository URL
         developer_email: Email address of the developer
         report_markdown: Complete go-live report in markdown format
-        report_json: Optional structured JSON data as a JSON string
+        report_json: Structured JSON data as a JSON string (REQUIRED)
 
     Returns:
         Formatted success message with report details
     """
     try:
-        # Parse JSON if provided
-        json_data = None
-        if report_json:
-            import json
-            try:
-                json_data = json.loads(report_json)
-            except json.JSONDecodeError as e:
-                return f"""# Error: Invalid JSON
+        # Parse JSON (required)
+        import json
+        try:
+            json_data = json.loads(report_json)
+        except json.JSONDecodeError as e:
+            return f"""# Error: Invalid JSON
 
 {str(e)}
 
@@ -64,18 +66,15 @@ The report_json parameter must be a valid JSON string.
             report_json=json_data,
         )
 
-        # Success message with structured data note
-        structured_note = "\n✨ **Structured data included!**" if json_data else ""
-
         return f"""# Report Submitted Successfully! ✅
 
 **Report ID:** {report.id}
 **Server Name:** {report.server_name}
 **Repository:** {report.repository_url}
 **Status:** {report.status}
-**Submitted:** {report.submitted_at}{structured_note}
+**Submitted:** {report.submitted_at}
 
-Your go-live report has been submitted to the platform team for review.
+Your go-live report (with structured JSON data) has been submitted to the platform team for review.
 
 ## Next Steps
 

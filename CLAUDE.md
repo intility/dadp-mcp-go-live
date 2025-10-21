@@ -20,6 +20,16 @@ This is a **proof of concept (POC)** for capturing and reviewing MCP server go-l
 
 ```
 mcp-go-live-service/
+├── frontend/                # React web UI
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── src/
+│   │   ├── routes/          # Page components
+│   │   ├── components/      # Reusable components
+│   │   ├── api/            # API client & React Query hooks
+│   │   └── types/          # TypeScript definitions
+│   └── README.md
+│
 ├── rust-api/                # Rust API backend
 │   ├── Cargo.toml
 │   ├── src/
@@ -54,11 +64,16 @@ mcp-go-live-service/
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
+| Frontend | React + TypeScript | 19+ |
+| Build Tool | Vite | 7+ |
+| Design System | Bifrost | 6.4+ |
+| Data Fetching | TanStack Query | 5+ |
 | API Backend | Rust + Axum | 0.8+ |
 | Database | PostgreSQL | 16 |
 | Database Driver | sqlx | 0.8+ |
 | MCP Server | Python | 3.11+ |
-| Package Manager | uv | Latest |
+| Package Manager (Python) | uv | Latest |
+| Package Manager (Node) | npm | Latest |
 | MCP Framework | mcp | 0.1+ |
 | HTTP Client | httpx | 0.27+ |
 
@@ -70,6 +85,7 @@ mcp-go-live-service/
 
 - Rust (via `rustup`)
 - Python 3.11+
+- Node.js 18+ (preferably 20+)
 - uv (`pip install uv` or `brew install uv`)
 - Docker (for PostgreSQL)
 - just (`cargo install just` or `brew install just`)
@@ -103,6 +119,80 @@ The Rust API POC is complete when all of these pass:
 - ✅ Code is formatted (`just fmt-check`)
 
 **Current Status:** All criteria met!
+
+---
+
+## Frontend (React Web UI)
+
+### Quick Start (Frontend)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server (requires API running)
+npm run dev
+# Running on http://localhost:5173
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
+
+### Frontend Features
+
+**Pages:**
+- **Dashboard** (`/`) - Overview with tabbed filtering (All/Approved/Rejected)
+- **Report List** (`/reports`) - Searchable list with status filtering
+- **Report Detail** (`/reports/:id`) - Full report view with review actions
+- **Home** (`/home`) - Setup and documentation guide
+- **Profile** (`/profile`) - User authentication info
+
+**Components:**
+- `ReportCard` - Summary card for report list views
+- `StatusBadge` - Visual status indicators
+- `ReviewForm` - Approve/reject workflow with notes
+- `PageHeader` - Responsive page headers
+- `ErrorPage` - Error boundary with Sentry integration
+
+**Features:**
+- Markdown rendering for reports
+- **Structured data display** - Shows risk levels, status, and critical issues from `report_json`
+- Real-time data updates with TanStack Query
+- Bifrost design system components
+- Responsive layout
+- Search and filter functionality
+- MSAL authentication (configured, not enforced)
+
+### Success Criteria
+
+The Frontend POC is complete when:
+
+- ✅ All routes render correctly
+- ✅ Can view dashboard and filter reports
+- ✅ Can view individual report details
+- ✅ Can approve/reject reports with notes
+- ✅ Search and filtering work
+- ✅ Markdown renders properly
+- ✅ Tests pass (`npm test`)
+- ✅ Build succeeds (`npm run build`)
+- ✅ No TypeScript errors
+- ✅ Follows Bifrost design guidelines
+
+**Current Status:** All criteria met!
+
+### Environment Variables
+
+```bash
+# .env file in frontend/
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_ENTRA_CLIENT_ID=__ENTRA_CLIENT_ID__
+VITE_ENTRA_AUTHORITY=https://login.microsoftonline.com/...
+```
 
 ---
 
@@ -437,8 +527,15 @@ All commands are available via `just`. Run `just` or `just --list` to see all av
 
 ```bash
 # Setup & Dependencies
-just setup              # Install required tools (one-time)
+just setup              # Install required tools (Rust + Python + Node)
 just install            # Install dependencies
+
+# Service Management
+just start-all          # Start all services (API + Frontend)
+just stop-all           # Stop all services
+just run-api            # Run Rust API only
+just run-frontend       # Run React frontend only
+just run-mcp            # Run MCP server only
 
 # Database Management
 just db-start           # Start PostgreSQL
@@ -449,20 +546,23 @@ just db-connect         # Connect with psql
 just db-view            # View all reports
 just db-clear           # Clear all reports
 
-# Development
+# Development (Rust API)
 just build              # Build project
 just build-release      # Build release version
-just run                # Run server (auto-starts DB)
+just run                # Run API and MCP server
 just watch              # Run with auto-reload (requires cargo-watch)
 
 # Testing
-just test               # Run unit tests
+just test               # Run all tests (Rust + Python + Frontend)
+just test-api           # Test Rust API only
+just test-frontend      # Test React frontend only
+just test-mcp           # Test MCP server only
 just test-verbose       # Run tests with output
 just check              # Run all checks (fmt, lint, test)
 
 # Code Quality
-just lint               # Run clippy
-just fmt                # Format code
+just lint               # Lint all code (Rust + TypeScript)
+just fmt                # Format all code
 just fmt-check          # Check formatting
 
 # API Testing
@@ -485,27 +585,37 @@ just sqlx-prepare       # Generate sqlx metadata for CI
 
 ### Example Workflows
 
-**Start fresh:**
+**Start fresh (all services):**
 ```bash
-just db-reset    # Clean slate
-just run         # Start server
+just db-reset      # Clean slate
+just start-all     # Start API and Frontend
+# API: http://localhost:8080
+# Frontend: http://localhost:5173
 ```
 
-**Development loop:**
+**Development loop (frontend):**
 ```bash
-just watch       # Auto-reload on changes
-# Make changes to src/main.rs
+just run-frontend  # Auto-reload on file changes
+# Make changes in frontend/src/
+# Browser updates automatically
+```
+
+**Development loop (API):**
+```bash
+just watch         # Auto-reload on changes (requires cargo-watch)
+# Make changes to rust-api/src/main.rs
 # Server restarts automatically
 ```
 
 **Before committing:**
 ```bash
-just check       # Runs fmt-check, lint, and test
+just check         # Runs fmt-check, lint, and test for all components
 ```
 
 **Test full workflow:**
 ```bash
 just test-integration   # Runs complete test suite
+# Or manually test in browser at http://localhost:5173
 ```
 
 ---
@@ -517,12 +627,15 @@ just test-integration   # Runs complete test suite
 1. Edit `rust-api/src/main.rs`
 2. Add handler function
 3. Register in `Router::new()`
-4. Test with curl
+4. Update frontend API client if needed (`frontend/src/api/client.ts`)
+5. Add React Query hook if needed (`frontend/src/api/queries.ts`)
+6. Test with curl and in UI
 
 ### Modify database
 
 1. Create migration: `rust-api/migrations/00X_name.sql`
 2. Restart API (migrations run automatically)
+3. Update TypeScript types if schema changed (`frontend/src/types/api.ts`)
 
 ### Add MCP tool
 
@@ -530,6 +643,20 @@ just test-integration   # Runs complete test suite
 2. Add to `list_tools()`
 3. Implement in `call_tool()`
 4. Test with Claude Code
+
+### Add frontend page
+
+1. Create route component: `frontend/src/routes/NewPage.tsx`
+2. Add route to `frontend/src/router.tsx`
+3. Add navigation link in `frontend/src/components/RootLayout.tsx`
+4. Use Bifrost components for consistent styling
+
+### Add frontend component
+
+1. Create component: `frontend/src/components/NewComponent.tsx`
+2. Import and use Bifrost components
+3. Add TypeScript types
+4. Write tests: `frontend/src/components/NewComponent.test.tsx`
 
 ---
 
@@ -542,9 +669,17 @@ cd rust-api && cargo test
 # Python tests
 cd mcp-server && uv run pytest
 
+# Frontend tests
+cd frontend && npm test
+
 # Integration
+just test-integration
+
+# Or manually:
 docker-compose up -d
-./test-integration.sh
+# Start all services, then:
+curl -X POST http://localhost:8080/api/v1/reports -H "Content-Type: application/json" -d '...'
+# Open http://localhost:5173 to verify in UI
 ```
 
 ---
@@ -641,24 +776,54 @@ just db-reset    # Reset database
 just test        # Run tests again
 ```
 
+### Frontend: API calls failing
+
+```bash
+# Check API is running
+curl http://localhost:8080/healthz
+
+# Check CORS is enabled (should be by default)
+# Verify VITE_API_BASE_URL in frontend/.env
+cat frontend/.env
+```
+
+### Frontend won't start
+
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
+
+### TypeScript errors
+
+```bash
+cd frontend
+npm run lint        # Check for errors
+npx tsc --noEmit   # Type check without building
+```
+
 ---
 
 ## POC Constraints
 
 ### Intentionally Simple
 - ✅ Single file API (`main.rs`)
-- ✅ No authentication
+- ✅ No authentication enforcement (MSAL configured but not required)
 - ✅ No validation automation
 - ✅ No complex workflows
-- ✅ No UI (use API/curl)
+- ✅ Basic UI (functional, not production-ready)
 
 ### Add Post-POC
-- Web UI for platform team
-- OBO authentication
-- Automated validation (GitHub, kubectl)
+- Enforce OBO authentication (already configured in frontend)
+- Automated validation (GitHub API, kubectl checks)
 - Email notifications
 - Audit logging
 - OpenTelemetry
+- Production deployment setup
+- Advanced error handling
+- Rate limiting
 
 ---
 
@@ -668,6 +833,13 @@ just test        # Run tests again
 ```bash
 DATABASE_URL="postgres://user:pass@host/db"  # Required
 PORT=8080                                     # Optional
+```
+
+### Frontend
+```bash
+VITE_API_BASE_URL=http://localhost:8080/api/v1           # Required
+VITE_ENTRA_CLIENT_ID=__ENTRA_CLIENT_ID__                 # Optional (for auth)
+VITE_ENTRA_AUTHORITY=https://login.microsoftonline.com/...  # Optional (for auth)
 ```
 
 ### MCP Server
@@ -699,6 +871,27 @@ just db-view
 
 # Reset everything
 just db-reset
+```
+
+### Frontend (with npm)
+
+```bash
+cd frontend
+
+# Start dev server
+npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+
+# Lint code
+npm run lint
+
+# Type check
+npx tsc --noEmit
 ```
 
 ### Manual curl commands
@@ -738,6 +931,8 @@ curl -X PATCH http://localhost:8080/api/v1/reports/{id}/status \
 
 - **PRD:** `docs/PRD.md` - Product requirements (POC scope)
 - **Architecture:** `docs/ARCHITECTURE.md` - Technical details
+- **Frontend README:** `frontend/README.md` - Frontend-specific documentation
+- **Bifrost Docs:** https://bifrost.intility.com - Design system documentation
 - **MCP Protocol:** https://modelcontextprotocol.io/
 
 ---

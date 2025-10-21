@@ -1,0 +1,7 @@
+.home {
+  width: 100%;
+}
+
+.home > :not(div) {
+  text-align: center;
+}

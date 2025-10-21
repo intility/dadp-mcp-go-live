@@ -50,9 +50,9 @@ export default function Dashboard() {
     return filtered;
   };
 
-  const filteredAllReports = filterByName(allReports, false);  // Show ALL reports including pending
-  const filteredApprovedReports = filterByName(approvedReports, true);  // Exclude pending from approved tab
-  const filteredRejectedReports = filterByName(rejectedReports, true);  // Exclude pending from rejected tab
+  const filteredAllReports = filterByName(allReports, false); // Show ALL reports including pending
+  const filteredApprovedReports = filterByName(approvedReports, true); // Exclude pending from approved tab
+  const filteredRejectedReports = filterByName(rejectedReports, true); // Exclude pending from rejected tab
 
   // Helper to render report list with search input
   const renderReportList = (reports: typeof allReports, statusName: string) => {

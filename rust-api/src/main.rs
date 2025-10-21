@@ -7,6 +7,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -23,6 +24,8 @@ struct Report {
     repository_url: String,
     developer_email: String,
     report_data: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    report_json: Option<JsonValue>,
     status: String,
     submitted_at: DateTime<Utc>,
     reviewed_at: Option<DateTime<Utc>>,
@@ -36,6 +39,8 @@ struct CreateReportRequest {
     repository_url: String,
     developer_email: String,
     report_data: String,
+    #[serde(default)]
+    report_json: Option<JsonValue>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,8 +74,8 @@ async fn create_report(
 ) -> Result<(StatusCode, Json<Report>), (StatusCode, Json<ErrorResponse>)> {
     let report = sqlx::query_as::<_, Report>(
         r#"
-        INSERT INTO mcp_server_reports (server_name, repository_url, developer_email, report_data)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO mcp_server_reports (server_name, repository_url, developer_email, report_data, report_json)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         "#,
     )
@@ -78,6 +83,7 @@ async fn create_report(
     .bind(&req.repository_url)
     .bind(&req.developer_email)
     .bind(&req.report_data)
+    .bind(&req.report_json)
     .fetch_one(&pool)
     .await
     .map_err(|e| {
@@ -96,7 +102,17 @@ async fn create_report(
         )
     })?;
 
-    tracing::info!("Created report: {} for {}", report.id, report.server_name);
+    let json_status = if report.report_json.is_some() {
+        "with structured JSON"
+    } else {
+        "markdown only"
+    };
+    tracing::info!(
+        "Created report: {} for {} ({})",
+        report.id,
+        report.server_name,
+        json_status
+    );
     Ok((StatusCode::CREATED, Json(report)))
 }
 
@@ -286,5 +302,90 @@ mod tests {
         let json = r#"{"status":"approved","reviewed_by":"platform@test.com"}"#;
         let req: UpdateStatusRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.status, "approved");
+    }
+
+    // New tests for JSON support
+    #[test]
+    fn test_create_report_request_without_json() {
+        let json = r##"{
+            "server_name": "test-server",
+            "repository_url": "https://github.com/test/test",
+            "developer_email": "test@example.com",
+            "report_data": "Test Report"
+        }"##;
+
+        let req: CreateReportRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.server_name, "test-server");
+        assert!(req.report_json.is_none());
+    }
+
+    #[test]
+    fn test_create_report_request_with_json() {
+        let json = r##"{
+            "server_name": "test-server",
+            "repository_url": "https://github.com/test/test",
+            "developer_email": "test@example.com",
+            "report_data": "Test Report",
+            "report_json": {
+                "report_version": "1.0",
+                "server_info": {
+                    "server_name": "test-server"
+                }
+            }
+        }"##;
+
+        let req: CreateReportRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.server_name, "test-server");
+        assert!(req.report_json.is_some());
+
+        let json_data = req.report_json.unwrap();
+        assert_eq!(json_data["report_version"], "1.0");
+    }
+
+    #[test]
+    fn test_report_serialization_with_json() {
+        let report = Report {
+            id: Uuid::new_v4(),
+            server_name: "test-server".to_string(),
+            repository_url: "https://github.com/test/test".to_string(),
+            developer_email: "test@example.com".to_string(),
+            report_data: "# Test".to_string(),
+            report_json: Some(serde_json::json!({
+                "report_version": "1.0",
+                "server_info": {
+                    "server_name": "test-server"
+                }
+            })),
+            status: "pending_review".to_string(),
+            submitted_at: Utc::now(),
+            reviewed_at: None,
+            reviewed_by: None,
+            review_notes: None,
+        };
+
+        let json_str = serde_json::to_string(&report).unwrap();
+        assert!(json_str.contains("report_json"));
+        assert!(json_str.contains("report_version"));
+    }
+
+    #[test]
+    fn test_report_serialization_without_json() {
+        let report = Report {
+            id: Uuid::new_v4(),
+            server_name: "test-server".to_string(),
+            repository_url: "https://github.com/test/test".to_string(),
+            developer_email: "test@example.com".to_string(),
+            report_data: "# Test".to_string(),
+            report_json: None,
+            status: "pending_review".to_string(),
+            submitted_at: Utc::now(),
+            reviewed_at: None,
+            reviewed_by: None,
+            review_notes: None,
+        };
+
+        let json_str = serde_json::to_string(&report).unwrap();
+        // With skip_serializing_if, null fields are omitted
+        assert!(!json_str.contains("report_json") || json_str.contains("\"report_json\":null"));
     }
 }

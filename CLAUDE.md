@@ -1,7 +1,7 @@
 # CLAUDE.md - Claude Code Developer Guide
 
 **Repository:** mcp-go-live-service
-**Last Updated:** 2025-10-20
+**Last Updated:** 2025-10-21
 
 ---
 
@@ -116,13 +116,24 @@ CREATE TABLE mcp_server_reports (
     server_name VARCHAR(255),
     repository_url VARCHAR(500) UNIQUE,
     developer_email VARCHAR(255),
-    report_data TEXT,
-    status VARCHAR(50), -- 'pending_review', 'approved', 'rejected'
+    report_data TEXT,                -- Markdown report (human-readable)
+    report_json JSONB,               -- Structured data (NEW - machine-queryable)
+    status VARCHAR(50),              -- 'pending_review', 'approved', 'rejected'
     submitted_at TIMESTAMP,
     reviewed_at TIMESTAMP,
     reviewed_by VARCHAR(255),
     review_notes TEXT
 );
+
+-- Indexes for JSON queries (NEW)
+CREATE INDEX idx_reports_json_risk_level
+  ON mcp_server_reports ((report_json->'phase1_security'->>'risk_level'));
+
+CREATE INDEX idx_reports_json_approval_status
+  ON mcp_server_reports ((report_json->'executive_summary'->>'overall_status'));
+
+CREATE INDEX idx_reports_json_gin
+  ON mcp_server_reports USING GIN (report_json);
 ```
 
 ### Access Database
@@ -133,6 +144,16 @@ docker exec -it golive-postgres psql -U postgres -d golive
 # Useful queries
 SELECT * FROM mcp_server_reports;
 SELECT * FROM mcp_server_reports WHERE status = 'pending_review';
+
+# Query by risk level (NEW)
+SELECT server_name, report_json->'phase1_security'->>'risk_level' as risk
+FROM mcp_server_reports
+WHERE report_json->'phase1_security'->>'risk_level' = 'HIGH';
+
+# Query by approval status (NEW)
+SELECT server_name, report_json->'executive_summary'->>'overall_status' as status
+FROM mcp_server_reports
+WHERE report_json IS NOT NULL;
 ```
 
 ---
@@ -142,8 +163,9 @@ SELECT * FROM mcp_server_reports WHERE status = 'pending_review';
 **Base:** `http://localhost:8080/api/v1`
 
 ### POST /reports
-Submit report.
+Submit report (with optional structured JSON data).
 
+**Markdown only (backward compatible):**
 ```bash
 curl -X POST http://localhost:8080/api/v1/reports \
   -H "Content-Type: application/json" \
@@ -154,6 +176,34 @@ curl -X POST http://localhost:8080/api/v1/reports \
     "report_data": "# Report..."
   }'
 ```
+
+**With structured JSON data (NEW):**
+```bash
+curl -X POST http://localhost:8080/api/v1/reports \
+  -H "Content-Type: application/json" \
+  -d '{
+    "server_name": "mcp-servicenow",
+    "repository_url": "https://github.com/intility/mcp-servicenow",
+    "developer_email": "dev@intility.no",
+    "report_data": "# Report...",
+    "report_json": {
+      "report_version": "1.0",
+      "server_info": {
+        "server_name": "mcp-servicenow",
+        "repository_url": "https://github.com/intility/mcp-servicenow"
+      },
+      "executive_summary": {
+        "overall_status": "APPROVED",
+        "critical_issues_count": 0
+      },
+      "phase1_security": {
+        "risk_level": "LOW"
+      }
+    }
+  }'
+```
+
+**Note:** The `report_json` field is optional and stores structured data conforming to the MCPGoLiveReport Pydantic model from the mcp-go-live skill.
 
 ### GET /reports?status={status}
 List reports.

@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            report_json->'phase1_security'->>'risk_level' as \"risk_level?\",\n            COUNT(*) as \"count!\"\n        FROM mcp_server_reports\n        WHERE report_json IS NOT NULL\n          AND report_json->'phase1_security'->>'risk_level' IS NOT NULL\n        GROUP BY report_json->'phase1_security'->>'risk_level'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "risk_level?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "c82488d37084fcdc5ab18f21bdd7799d04d8a1944b63fa149dbfa70434b19abf"
+}

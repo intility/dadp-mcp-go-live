@@ -1,5 +1,7 @@
 """HTTP client for communicating with the Rust API backend."""
 
+from typing import Any
+
 import httpx
 from .config import settings
 from .models import Report
@@ -18,6 +20,7 @@ class GoLiveAPIClient:
         repository_url: str,
         developer_email: str,
         report_data: str,
+        report_json: dict[str, Any] | None = None,
     ) -> Report:
         """Submit a go-live report to the API.
 
@@ -26,6 +29,7 @@ class GoLiveAPIClient:
             repository_url: GitHub repository URL
             developer_email: Developer's email address
             report_data: Full markdown report
+            report_json: Optional structured JSON data
 
         Returns:
             Report object with ID and status
@@ -33,15 +37,20 @@ class GoLiveAPIClient:
         Raises:
             httpx.HTTPStatusError: If API returns error status
         """
+        payload = {
+            "server_name": server_name,
+            "repository_url": repository_url,
+            "developer_email": developer_email,
+            "report_data": report_data,
+        }
+
+        if report_json is not None:
+            payload["report_json"] = report_json
+
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
                 f"{self.base_url}/reports",
-                json={
-                    "server_name": server_name,
-                    "repository_url": repository_url,
-                    "developer_email": developer_email,
-                    "report_data": report_data,
-                },
+                json=payload,
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()

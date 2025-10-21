@@ -232,6 +232,74 @@ curl -X PATCH http://localhost:8080/api/v1/reports/{id}/status \
   }'
 ```
 
+### GET /reports/analytics/risk-distribution (Phase 3)
+Get count of reports by risk level.
+
+```bash
+curl http://localhost:8080/api/v1/reports/analytics/risk-distribution
+```
+
+**Response:**
+```json
+{
+  "LOW": 10,
+  "MEDIUM": 3,
+  "HIGH": 1,
+  "CRITICAL": 0
+}
+```
+
+### GET /reports/{id}/issues (Phase 3)
+Extract critical issues, warnings, and recommendations from a specific report.
+
+```bash
+curl http://localhost:8080/api/v1/reports/{id}/issues
+```
+
+**Response:**
+```json
+{
+  "report_id": "uuid",
+  "server_name": "mcp-servicenow",
+  "critical_issues": [
+    {
+      "severity": "CRITICAL",
+      "description": "Issue description",
+      "impact": "High",
+      "recommendation": "Fix recommendation",
+      "phase_id": "P1"
+    }
+  ],
+  "warnings": [...],
+  "recommendations": [...]
+}
+```
+
+### GET /reports/analytics/summary (Phase 3)
+Get overview statistics across all reports.
+
+```bash
+curl http://localhost:8080/api/v1/reports/analytics/summary
+```
+
+**Response:**
+```json
+{
+  "total_reports": 15,
+  "with_structured_data": 12,
+  "by_status": {
+    "pending_review": 5,
+    "approved": 8,
+    "rejected": 2
+  },
+  "by_risk_level": {
+    "LOW": 10,
+    "MEDIUM": 2
+  },
+  "recent_submissions_24h": 3
+}
+```
+
 ---
 
 ## MCP Server
@@ -292,6 +360,7 @@ Submit go-live report from Claude Code to the platform team.
 - `repository_url` (string, required) - GitHub repository URL
 - `developer_email` (string, required) - Developer's email
 - `report_markdown` (string, required) - Complete report in markdown format
+- `report_json` (string, optional) - **Phase 2:** Structured JSON data as a JSON string
 
 **Returns:** Confirmation with report ID and status
 
@@ -299,6 +368,8 @@ Submit go-live report from Claude Code to the platform team.
 ```
 Please submit my go-live report for mcp-servicenow at https://github.com/intility/mcp-servicenow
 ```
+
+**Note:** The `mcp-go-live` skill automatically generates both markdown and JSON data. The JSON parameter will be populated automatically when using the skill.
 
 #### list_servers
 List submitted servers and their review status.

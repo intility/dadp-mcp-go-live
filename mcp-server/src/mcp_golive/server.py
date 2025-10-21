@@ -23,6 +23,7 @@ async def submit_report(
     repository_url: str,
     developer_email: str,
     report_markdown: str,
+    report_json: str | None = None,
 ) -> str:
     """Submit an MCP server go-live report to the platform team for review.
 
@@ -35,17 +36,36 @@ async def submit_report(
         repository_url: Full GitHub repository URL
         developer_email: Email address of the developer
         report_markdown: Complete go-live report in markdown format
+        report_json: Optional structured JSON data as a JSON string
 
     Returns:
         Formatted success message with report details
     """
     try:
+        # Parse JSON if provided
+        json_data = None
+        if report_json:
+            import json
+            try:
+                json_data = json.loads(report_json)
+            except json.JSONDecodeError as e:
+                return f"""# Error: Invalid JSON
+
+{str(e)}
+
+The report_json parameter must be a valid JSON string.
+"""
+
         report = await api_client.submit_report(
             server_name=server_name,
             repository_url=repository_url,
             developer_email=developer_email,
             report_data=report_markdown,
+            report_json=json_data,
         )
+
+        # Success message with structured data note
+        structured_note = "\n✨ **Structured data included!**" if json_data else ""
 
         return f"""# Report Submitted Successfully! ✅
 
@@ -53,7 +73,7 @@ async def submit_report(
 **Server Name:** {report.server_name}
 **Repository:** {report.repository_url}
 **Status:** {report.status}
-**Submitted:** {report.submitted_at}
+**Submitted:** {report.submitted_at}{structured_note}
 
 Your go-live report has been submitted to the platform team for review.
 

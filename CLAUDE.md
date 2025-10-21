@@ -937,6 +937,61 @@ curl -X PATCH http://localhost:8080/api/v1/reports/{id}/status \
 
 ---
 
+## Git Workflow
+
+### Branch Protection Rules
+
+**CRITICAL: Never push directly to main!**
+
+All changes MUST go through the pull request workflow:
+
+1. **Create a feature branch:**
+   ```bash
+   git checkout -b feat/your-feature-name
+   # or
+   git checkout -b fix/bug-description
+   ```
+
+2. **Make your changes and commit:**
+   ```bash
+   git add .
+   git commit -m "feat: your descriptive commit message"
+   ```
+
+3. **Push to your feature branch:**
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+
+4. **Create a Pull Request:**
+   ```bash
+   gh pr create --title "feat: Your Feature" --body "Description of changes"
+   ```
+
+5. **Wait for review and approval, then merge via GitHub UI**
+
+### Branch Naming Convention
+
+- `feat/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+- `test/` - Test additions or updates
+
+### Commit Message Format
+
+Follow conventional commits:
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Test changes
+- `chore:` - Maintenance tasks
+
+**Example:** `feat: add structured data display to frontend`
+
+---
+
 ## Contributing
 
 **POC Guidelines:**

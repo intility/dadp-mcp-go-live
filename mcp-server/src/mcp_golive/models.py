@@ -12,7 +12,7 @@ class CreateReportRequest(BaseModel):
     repository_url: str
     developer_email: str
     report_data: str
-    report_json: dict[str, Any] | None = None
+    report_json: dict[str, Any]
 
 
 class Report(BaseModel):
@@ -23,7 +23,7 @@ class Report(BaseModel):
     repository_url: str
     developer_email: str
     report_data: str
-    report_json: dict[str, Any] | None = None
+    report_json: dict[str, Any]
     status: str
     submitted_at: str
     reviewed_at: str | None = None

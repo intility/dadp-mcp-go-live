@@ -30,11 +30,18 @@ export default function Dashboard() {
     setNameFilter(e.target.value);
   };
 
-  // Filter out pending_review reports and filter by MCP server name
-  const filterByName = (reports: typeof allReports) => {
-    let filtered = reports?.filter(
-      (report) => report.status !== "pending_review",
-    );
+  // Filter by MCP server name
+  const filterByName = (reports: typeof allReports, excludePending = false) => {
+    let filtered = reports;
+
+    // Only filter out pending_review for approved/rejected tabs
+    if (excludePending) {
+      filtered = filtered?.filter(
+        (report) => report.status !== "pending_review",
+      );
+    }
+
+    // Filter by server name
     if (nameFilter) {
       filtered = filtered?.filter((report) =>
         report.server_name.toLowerCase().includes(nameFilter.toLowerCase()),
@@ -43,9 +50,9 @@ export default function Dashboard() {
     return filtered;
   };
 
-  const filteredAllReports = filterByName(allReports);
-  const filteredApprovedReports = filterByName(approvedReports);
-  const filteredRejectedReports = filterByName(rejectedReports);
+  const filteredAllReports = filterByName(allReports, false); // Show ALL reports including pending
+  const filteredApprovedReports = filterByName(approvedReports, true); // Exclude pending from approved tab
+  const filteredRejectedReports = filterByName(rejectedReports, true); // Exclude pending from rejected tab
 
   // Helper to render report list with search input
   const renderReportList = (reports: typeof allReports, statusName: string) => {

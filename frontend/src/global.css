@@ -30,15 +30,76 @@ main.bf-page-padding {
   }
 }
 
-/* Remove all padding from Section components inside main */
-main section,
-main .bf-section {
-  padding: 0;
-}
-
 /* Remove all padding and max-width from Container components inside main */
 main .bf-container {
   max-width: none;
   padding: 0;
   background: transparent;
+}
+
+/* Normalize markdown content to follow Bifrost typography standards */
+.markdown-content {
+  font-family: var(--bf-font-family-base);
+  font-size: var(--bf-font-size-m);
+  line-height: var(--bf-line-height-base);
+  color: var(--bf-color-text-primary);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-family: var(--bf-font-family-base);
+  font-size: var(--bf-font-size-m);
+  font-weight: var(--bf-font-weight-bold);
+  line-height: var(--bf-line-height-base);
+  margin: var(--bf-spacing-xs) 0;
+}
+
+/* Hide the first heading (Go-Live Report title) */
+.markdown-content h1:first-child,
+.markdown-content h2:first-child {
+  display: none;
+}
+
+.markdown-content h3:first-child,
+.markdown-content h4:first-child,
+.markdown-content h5:first-child,
+.markdown-content h6:first-child {
+  margin-top: 0;
+}
+
+.markdown-content p {
+  margin: var(--bf-spacing-xs) 0;
+}
+
+.markdown-content p:first-child {
+  margin-top: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: var(--bf-spacing-xs) 0;
+  padding-left: var(--bf-spacing-l);
+}
+
+.markdown-content li {
+  margin: var(--bf-spacing-2xs) 0;
+}
+
+.markdown-content strong {
+  font-weight: var(--bf-font-weight-semibold);
+}
+
+.markdown-content code {
+  font-family: var(--bf-font-family-mono);
+  font-size: var(--bf-font-size-s);
+}
+
+.markdown-content pre {
+  margin: var(--bf-spacing-xs) 0;
+  overflow-x: auto;
+  font-family: var(--bf-font-family-mono);
 }

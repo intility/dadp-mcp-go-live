@@ -6,6 +6,7 @@ import {
   useApplyColorMode,
 } from "@intility/bifrost-react";
 import type React from "react";
+import { useEffect } from "react";
 import useLocalStorageState from "use-local-storage-state";
 
 const COLOR_MODE_LOCAL_STORAGE_KEY = "bfColorMode";
@@ -22,7 +23,7 @@ function usePersistedColorMode() {
 }
 
 /**
- * Component to apply the color mode to the document
+ * Component to apply the color mode and theme to the document
  * can be used in the main entry point of the app
  * to ensure the color mode is applied as early as possible
  */
@@ -31,6 +32,14 @@ export function ColorModeApplier({ children }: React.PropsWithChildren) {
 
   // keep document color mode in sync with state
   useApplyColorMode(colorMode);
+
+  // Apply pink theme by adding Bifrost's theme class
+  useEffect(() => {
+    document.documentElement.classList.add("bf-theme-pink");
+    return () => {
+      document.documentElement.classList.remove("bf-theme-pink");
+    };
+  }, []);
 
   return children;
 }

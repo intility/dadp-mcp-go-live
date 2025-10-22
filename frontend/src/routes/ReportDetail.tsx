@@ -3,49 +3,95 @@
  */
 
 import {
-  BackButton,
-  Card,
+  Badge,
+  Breadcrumbs,
   FormatDate,
   Grid,
   Icon,
   Message,
+  Section,
+  Table,
 } from "@intility/bifrost-react";
 import Markdown from "react-markdown";
-import { useParams } from "react-router";
-import { useApproveReport, useRejectReport, useReport } from "../api/queries";
-import { ReviewForm } from "../components/ReviewForm";
+import { Link, useParams } from "react-router";
+import { useReport } from "../api/queries";
 import { StatusBadge } from "../components/StatusBadge";
+
+interface SecurityReviewItem {
+  type: string;
+  status: string;
+  description: string;
+}
+
+function parseReportContent(markdown: string) {
+  const sections: { [key: string]: string } = {};
+  const lines = markdown.split("\n");
+  let currentSection = "";
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    // Check if it's a heading (h1 or h2)
+    if (line.startsWith("# ") || line.startsWith("## ")) {
+      // Save previous section
+      if (currentSection) {
+        sections[currentSection] = currentContent.join("\n").trim();
+      }
+      // Start new section
+      currentSection = line.replace(/^#+ /, "");
+      currentContent = [];
+    } else {
+      currentContent.push(line);
+    }
+  }
+
+  // Save last section
+  if (currentSection) {
+    sections[currentSection] = currentContent.join("\n").trim();
+  }
+
+  return sections;
+}
+
+function parseSecurityReview(content: string): SecurityReviewItem[] {
+  const items: SecurityReviewItem[] = [];
+  const lines = content
+    .split("\n")
+    .filter((line) => line.trim().startsWith("-"));
+
+  for (const line of lines) {
+    // Parse line like: "- Authentication: ✅ OAuth 2.0"
+    const match = line.match(/^-\s*(.+?):\s*(.+)$/);
+    if (match) {
+      const type = match[1].trim();
+      const rest = match[2].trim();
+
+      // Check for checkmark emoji or other status indicators
+      const hasCheckmark =
+        rest.includes("✅") || rest.includes("☑") || rest.includes("✓");
+      const status = hasCheckmark ? "success" : "alert";
+
+      // Remove status emoji from description
+      const description = rest.replace(/[✅☑✓❌]/g, "").trim();
+
+      items.push({ type, status, description });
+    }
+  }
+
+  return items;
+}
 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: report, isLoading, error } = useReport(id ?? "");
-  const approveReport = useApproveReport();
-  const rejectReport = useRejectReport();
-
-  const handleApprove = async (reviewedBy: string, notes: string) => {
-    if (!id) return;
-    try {
-      await approveReport.mutateAsync({ id, reviewedBy, notes });
-      alert("Report approved successfully!");
-    } catch (err) {
-      alert(`Failed to approve report: ${(err as Error).message}`);
-    }
-  };
-
-  const handleReject = async (reviewedBy: string, notes: string) => {
-    if (!id) return;
-    try {
-      await rejectReport.mutateAsync({ id, reviewedBy, notes });
-      alert("Report rejected");
-    } catch (err) {
-      alert(`Failed to reject report: ${(err as Error).message}`);
-    }
-  };
 
   if (!id) {
     return (
       <>
-        <BackButton />
+        <Breadcrumbs>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
+        </Breadcrumbs>
         <Message state="alert">Invalid report ID</Message>
       </>
     );
@@ -62,7 +108,11 @@ export default function ReportDetail() {
   if (error) {
     return (
       <>
-        <BackButton />
+        <Breadcrumbs>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
+        </Breadcrumbs>
         <Message state="alert">
           <strong>Error loading report:</strong> {(error as Error).message}
         </Message>
@@ -73,7 +123,11 @@ export default function ReportDetail() {
   if (!report) {
     return (
       <>
-        <BackButton />
+        <Breadcrumbs>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
+        </Breadcrumbs>
         <Message state="warning">Report not found</Message>
       </>
     );
@@ -81,7 +135,12 @@ export default function ReportDetail() {
 
   return (
     <>
-      <BackButton />
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Link to="/">MCP Submissions</Link>
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item>{report.server_name}</Breadcrumbs.Item>
+      </Breadcrumbs>
 
       <div
         style={{
@@ -91,20 +150,21 @@ export default function ReportDetail() {
           marginBottom: "1rem",
         }}
       >
-        <h1 style={{ marginTop: 0 }}>{report.server_name}</h1>
+        <h1 style={{ margin: 0 }}>{report.server_name}</h1>
         <StatusBadge status={report.status} />
       </div>
 
       <Grid cols={1} gap="1.5rem">
         {/* Report Metadata */}
-        <Card>
-          <Card.Title>Report Information</Card.Title>
-          <Card.Content>
+        <Section>
+          <Section.Header>Report Information</Section.Header>
+          <Section.Content>
             <dl
               style={{
                 display: "grid",
                 gridTemplateColumns: "200px 1fr",
                 gap: "0.75rem",
+                margin: 0,
               }}
             >
               <dt>
@@ -145,48 +205,79 @@ export default function ReportDetail() {
                   <dd>
                     <FormatDate date={new Date(report.reviewed_at)} />
                   </dd>
-
-                  <dt>
-                    <strong>Reviewed By:</strong>
-                  </dt>
-                  <dd>{report.reviewed_by}</dd>
-
-                  {report.review_notes && (
-                    <>
-                      <dt>
-                        <strong>Review Notes:</strong>
-                      </dt>
-                      <dd>{report.review_notes}</dd>
-                    </>
-                  )}
                 </>
               )}
             </dl>
-          </Card.Content>
-        </Card>
+          </Section.Content>
+        </Section>
 
-        {/* Report Content */}
-        <Card>
-          <Card.Title>Report Details</Card.Title>
-          <Card.Content>
-            <div className="markdown-content">
-              <Markdown>{report.report_data}</Markdown>
-            </div>
-          </Card.Content>
-        </Card>
+        {/* Security Review */}
+        {(() => {
+          const sections = parseReportContent(report.report_data);
+          const securityContent = sections["Security Review"];
+          if (securityContent) {
+            const items = parseSecurityReview(securityContent);
+            return (
+              <Section style={{ overflow: "hidden" }}>
+                <Section.Header>Security Review</Section.Header>
+                <Section.Content padding={0}>
+                  <Table noBorder style={{ margin: 0 }}>
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.HeaderCell>Type</Table.HeaderCell>
+                        <Table.HeaderCell>Status</Table.HeaderCell>
+                        <Table.HeaderCell>Description</Table.HeaderCell>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {items.map((item) => (
+                        <Table.Row key={item.type}>
+                          <Table.Cell>{item.type}</Table.Cell>
+                          <Table.Cell>
+                            <Badge state={item.status as "success" | "alert"}>
+                              {item.status === "success" ? "Pass" : "Fail"}
+                            </Badge>
+                          </Table.Cell>
+                          <Table.Cell>{item.description}</Table.Cell>
+                        </Table.Row>
+                      ))}
+                    </Table.Body>
+                  </Table>
+                </Section.Content>
+              </Section>
+            );
+          }
+          return null;
+        })()}
 
-        {/* Review Form */}
-        <Card>
-          <Card.Title>Review</Card.Title>
-          <Card.Content>
-            <ReviewForm
-              report={report}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              isLoading={approveReport.isPending || rejectReport.isPending}
-            />
-          </Card.Content>
-        </Card>
+        {/* Testing */}
+        {(() => {
+          const sections = parseReportContent(report.report_data);
+          const testingContent = sections.Testing;
+          if (testingContent) {
+            return (
+              <Section>
+                <Section.Header>Testing</Section.Header>
+                <Section.Content>
+                  <div className="markdown-content" style={{ margin: 0 }}>
+                    <Markdown>{testingContent}</Markdown>
+                  </div>
+                </Section.Content>
+              </Section>
+            );
+          }
+          return null;
+        })()}
+
+        {/* Review Notes */}
+        {report.review_notes && (
+          <Section>
+            <Section.Header>Review Notes</Section.Header>
+            <Section.Content>
+              <p style={{ margin: 0 }}>{report.review_notes}</p>
+            </Section.Content>
+          </Section>
+        )}
       </Grid>
     </>
   );

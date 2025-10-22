@@ -2,7 +2,7 @@
  * Review form component for approving/rejecting reports
  */
 
-import { Button, FieldGroup, Input, TextArea } from "@intility/bifrost-react";
+import { Button, FieldGroup, TextArea } from "@intility/bifrost-react";
 import { useState } from "react";
 import type { Report } from "../types/api";
 
@@ -19,7 +19,7 @@ export function ReviewForm({
   onReject,
   isLoading = false,
 }: ReviewFormProps) {
-  const [reviewedBy, setReviewedBy] = useState("platform@intility.no");
+  const reviewedBy = "platform@intility.no";
   const [notes, setNotes] = useState("");
 
   const handleApprove = () => {
@@ -41,17 +41,6 @@ export function ReviewForm({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <FieldGroup>
-        <Input
-          label="Reviewed By"
-          type="email"
-          value={reviewedBy}
-          onChange={(e) => setReviewedBy(e.target.value)}
-          disabled={!isPending || isLoading}
-          required
-        />
-      </FieldGroup>
-
-      <FieldGroup>
         <TextArea
           label="Review Notes"
           value={notes}
@@ -68,33 +57,24 @@ export function ReviewForm({
         />
       </FieldGroup>
 
-      {isReviewed && (
+      {isReviewed && report.review_notes && (
         <div>
           <p>
-            <strong>Reviewed by:</strong> {report.reviewed_by}
+            <strong>Notes:</strong> {report.review_notes}
           </p>
-          {report.review_notes && (
-            <p>
-              <strong>Notes:</strong> {report.review_notes}
-            </p>
-          )}
         </div>
       )}
 
       {isPending && (
         <div style={{ display: "flex", gap: "1rem" }}>
-          <Button
-            variant="filled"
-            onClick={handleApprove}
-            disabled={isLoading || !reviewedBy}
-          >
+          <Button variant="filled" onClick={handleApprove} disabled={isLoading}>
             ✅ Approve
           </Button>
           <Button
             variant="filled"
             state="alert"
             onClick={handleReject}
-            disabled={isLoading || !reviewedBy || !notes.trim()}
+            disabled={isLoading || !notes.trim()}
           >
             ❌ Reject
           </Button>

@@ -21,6 +21,7 @@ export default function RootLayout() {
         </NavLink>
       }
       top={<ColorModePicker />}
+      theme="pink"
     >
       <main
         style={{

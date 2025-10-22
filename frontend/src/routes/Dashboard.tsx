@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/pro-regular-svg-icons";
 import {
   Button,
+  FormatDate,
   Grid,
   Icon,
   Input,
@@ -16,7 +17,7 @@ import {
   Table,
   Tabs,
 } from "@intility/bifrost-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useReports } from "../api/queries";
 import PageHeader from "../components/PageHeader";
 import { ReportCard } from "../components/ReportCard";
@@ -27,6 +28,7 @@ type ViewMode = "card" | "list";
 export default function Dashboard() {
   const [nameFilter, setNameFilter] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 800);
 
   const { data: allReports, isLoading: loadingAll } = useReports();
   const { data: approvedReports, isLoading: loadingApproved } =
@@ -35,6 +37,16 @@ export default function Dashboard() {
     useReports("rejected");
 
   const isLoading = loadingAll || loadingApproved || loadingRejected;
+
+  // Listen for window resize to update mobile state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 800);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNameFilter(e.target.value);
@@ -78,6 +90,7 @@ export default function Dashboard() {
               icon={faMagnifyingGlass}
               iconButton
               rightIcon
+              radius="s"
             />
           </div>
           <Button.Group>
@@ -108,15 +121,18 @@ export default function Dashboard() {
         ) : viewMode === "card" ? (
           <Grid cols={1} gap="1rem">
             {reports.map((report) => (
-              <ReportCard key={report.id} report={report} showRejectionReason />
+              <ReportCard key={report.id} report={report} />
             ))}
           </Grid>
         ) : (
-          <Table>
+          <Table noBorder radius="s">
             <Table.Header>
               <Table.Row>
+                {isMobile && <Table.HeaderCell></Table.HeaderCell>}
                 <Table.HeaderCell>Server Name</Table.HeaderCell>
-                <Table.HeaderCell>Developer</Table.HeaderCell>
+                {!isMobile && <Table.HeaderCell>Developer</Table.HeaderCell>}
+                {!isMobile && <Table.HeaderCell>Submitted</Table.HeaderCell>}
+                {!isMobile && <Table.HeaderCell>Reviewed</Table.HeaderCell>}
                 <Table.HeaderCell>Status</Table.HeaderCell>
               </Table.Row>
             </Table.Header>
@@ -127,10 +143,65 @@ export default function Dashboard() {
                   onClick={() => {
                     window.location.href = `/reports/${report.id}`;
                   }}
+                  limitExpandClick={isMobile}
+                  content={
+                    isMobile ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          paddingLeft: "16px",
+                          paddingRight: "16px",
+                          paddingTop: "8px",
+                          paddingBottom: "8px",
+                        }}
+                      >
+                        <div>
+                          <strong style={{ marginRight: "8px" }}>
+                            Developer:
+                          </strong>
+                          <span>{report.developer_email}</span>
+                        </div>
+                        <div>
+                          <strong style={{ marginRight: "8px" }}>
+                            Submitted:
+                          </strong>
+                          <FormatDate date={new Date(report.submitted_at)} />
+                        </div>
+                        {report.reviewed_at && (
+                          <div>
+                            <strong style={{ marginRight: "8px" }}>
+                              Reviewed:
+                            </strong>
+                            <FormatDate date={new Date(report.reviewed_at)} />
+                          </div>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                 >
                   <Table.Cell>{report.server_name}</Table.Cell>
-                  <Table.Cell>{report.developer_email}</Table.Cell>
-                  <Table.Cell>
+                  {!isMobile && (
+                    <Table.Cell>{report.developer_email}</Table.Cell>
+                  )}
+                  {!isMobile && (
+                    <Table.Cell>
+                      <FormatDate date={new Date(report.submitted_at)} />
+                    </Table.Cell>
+                  )}
+                  {!isMobile && (
+                    <Table.Cell>
+                      {report.reviewed_at ? (
+                        <FormatDate date={new Date(report.reviewed_at)} />
+                      ) : (
+                        <span style={{ color: "var(--bf-color-fg-subtle)" }}>
+                          —
+                        </span>
+                      )}
+                    </Table.Cell>
+                  )}
+                  <Table.Cell onClick={(e) => e.stopPropagation()}>
                     <StatusBadge status={report.status} />
                   </Table.Cell>
                 </Table.Row>

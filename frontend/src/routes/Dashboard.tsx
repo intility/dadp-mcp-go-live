@@ -3,20 +3,30 @@
  */
 
 import {
-  Badge,
+  faGrid2,
+  faList,
+  faMagnifyingGlass,
+} from "@fortawesome/pro-regular-svg-icons";
+import {
+  Button,
   Grid,
   Icon,
   Input,
   Message,
+  Table,
   Tabs,
 } from "@intility/bifrost-react";
 import { useState } from "react";
 import { useReports } from "../api/queries";
 import PageHeader from "../components/PageHeader";
 import { ReportCard } from "../components/ReportCard";
+import { StatusBadge } from "../components/StatusBadge";
+
+type ViewMode = "card" | "list";
 
 export default function Dashboard() {
   const [nameFilter, setNameFilter] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
 
   const { data: allReports, isLoading: loadingAll } = useReports();
   const { data: approvedReports, isLoading: loadingApproved } =
@@ -30,18 +40,11 @@ export default function Dashboard() {
     setNameFilter(e.target.value);
   };
 
-  // Filter by MCP server name
-  const filterByName = (reports: typeof allReports, excludePending = false) => {
-    let filtered = reports;
-
-    // Only filter out pending_review for approved/rejected tabs
-    if (excludePending) {
-      filtered = filtered?.filter(
-        (report) => report.status !== "pending_review",
-      );
-    }
-
-    // Filter by server name
+  // Filter out pending_review reports and filter by MCP server name
+  const filterByName = (reports: typeof allReports) => {
+    let filtered = reports?.filter(
+      (report) => report.status !== "pending_review",
+    );
     if (nameFilter) {
       filtered = filtered?.filter((report) =>
         report.server_name.toLowerCase().includes(nameFilter.toLowerCase()),
@@ -50,35 +53,90 @@ export default function Dashboard() {
     return filtered;
   };
 
-  const filteredAllReports = filterByName(allReports, false); // Show ALL reports including pending
-  const filteredApprovedReports = filterByName(approvedReports, true); // Exclude pending from approved tab
-  const filteredRejectedReports = filterByName(rejectedReports, true); // Exclude pending from rejected tab
+  const filteredAllReports = filterByName(allReports);
+  const filteredApprovedReports = filterByName(approvedReports);
+  const filteredRejectedReports = filterByName(rejectedReports);
 
   // Helper to render report list with search input
   const renderReportList = (reports: typeof allReports, statusName: string) => {
     return (
       <div>
-        <Input
-          label="Search by MCP server name"
-          placeholder="Enter MCP server name to filter submissions"
-          value={nameFilter}
-          onChange={handleNameChange}
-          style={{ marginBottom: "16px" }}
-        />
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            marginBottom: "16px",
+            alignItems: "flex-end",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Search by MCP server name"
+              placeholder="Enter MCP server name to filter submissions"
+              value={nameFilter}
+              onChange={handleNameChange}
+              icon={faMagnifyingGlass}
+              iconButton
+              rightIcon
+            />
+          </div>
+          <Button.Group>
+            <Button
+              active={viewMode === "card"}
+              onClick={() => setViewMode("card")}
+              aria-label="Card view"
+            >
+              <Icon icon={faGrid2} />
+            </Button>
+            <Button
+              active={viewMode === "list"}
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+            >
+              <Icon icon={faList} />
+            </Button>
+          </Button.Group>
+        </div>
         {!reports || reports.length === 0 ? (
           <Message state="neutral">
             {nameFilter
               ? `No ${statusName} reports found matching "${nameFilter}".`
               : statusName === "all submissions"
-                ? "No submissions yet."
+                ? "No reviewed submissions yet."
                 : `No ${statusName} reports found.`}
           </Message>
-        ) : (
+        ) : viewMode === "card" ? (
           <Grid cols={1} gap="1rem">
             {reports.map((report) => (
               <ReportCard key={report.id} report={report} showRejectionReason />
             ))}
           </Grid>
+        ) : (
+          <Table>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>Server Name</Table.HeaderCell>
+                <Table.HeaderCell>Developer</Table.HeaderCell>
+                <Table.HeaderCell>Status</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {reports.map((report) => (
+                <Table.Row
+                  key={report.id}
+                  onClick={() => {
+                    window.location.href = `/reports/${report.id}`;
+                  }}
+                >
+                  <Table.Cell>{report.server_name}</Table.Cell>
+                  <Table.Cell>{report.developer_email}</Table.Cell>
+                  <Table.Cell>
+                    <StatusBadge status={report.status} />
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
         )}
       </div>
     );
@@ -87,8 +145,8 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader
-        title="MCP Server Submissions"
-        description="View all MCP server submissions, their approval status, and feedback"
+        title="MCP Submissions"
+        description="View reviewed MCP server submissions, their approval status, and feedback"
       />
 
       {isLoading ? (
@@ -108,25 +166,27 @@ export default function Dashboard() {
               content={renderReportList(filteredAllReports, "all submissions")}
             >
               All Submissions{" "}
-              <Badge state="neutral">{filteredAllReports?.length || 0}</Badge>
+              <span style={{ color: "var(--bf-color-fg-subtle)" }}>
+                ({filteredAllReports?.length || 0})
+              </span>
             </Tabs.Item>
 
             <Tabs.Item
               content={renderReportList(filteredApprovedReports, "approved")}
             >
               Approved{" "}
-              <Badge state="success">
-                {filteredApprovedReports?.length || 0}
-              </Badge>
+              <span style={{ color: "var(--bf-color-fg-success)" }}>
+                ({filteredApprovedReports?.length || 0})
+              </span>
             </Tabs.Item>
 
             <Tabs.Item
               content={renderReportList(filteredRejectedReports, "rejected")}
             >
               Rejected{" "}
-              <Badge state="alert">
-                {filteredRejectedReports?.length || 0}
-              </Badge>
+              <span style={{ color: "var(--bf-color-fg-alert)" }}>
+                ({filteredRejectedReports?.length || 0})
+              </span>
             </Tabs.Item>
           </Tabs>
         </div>

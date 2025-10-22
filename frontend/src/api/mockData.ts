@@ -44,6 +44,20 @@ export const getMockReport = (id: string): Report | undefined => {
   const summary = mockReports.find((r) => r.id === id);
   if (!summary) return undefined;
 
+  // Vary the security review based on status
+  const securityReview =
+    summary.status === "rejected"
+      ? `- Authentication: ❌ Missing OAuth implementation
+- Rate Limiting: ✅ Implemented
+- Error Handling: ❌ No proper error messages`
+      : summary.status === "pending_review"
+        ? `- Authentication: ✅ OAuth 2.0
+- Rate Limiting: ❌ Not implemented
+- Error Handling: ✅ Proper error messages`
+        : `- Authentication: ✅ OAuth 2.0
+- Rate Limiting: ✅ Implemented
+- Error Handling: ✅ Proper error messages`;
+
   return {
     ...summary,
     report_data: `# ${summary.server_name} Go-Live Report
@@ -52,9 +66,7 @@ export const getMockReport = (id: string): Report | undefined => {
 This is a sample report for ${summary.server_name}.
 
 ## Security Review
-- Authentication: ✅ OAuth 2.0
-- Rate Limiting: ✅ Implemented
-- Error Handling: ✅ Proper error messages
+${securityReview}
 
 ## Testing
 All tests passing.`,

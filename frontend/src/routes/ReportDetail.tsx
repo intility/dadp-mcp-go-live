@@ -13,7 +13,7 @@ import {
   Table,
 } from "@intility/bifrost-react";
 import Markdown from "react-markdown";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useReport } from "../api/queries";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -88,7 +88,9 @@ export default function ReportDetail() {
     return (
       <>
         <Breadcrumbs>
-          <Breadcrumbs.Item href="/">MCP Submissions</Breadcrumbs.Item>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
         </Breadcrumbs>
         <Message state="alert">Invalid report ID</Message>
       </>
@@ -107,7 +109,9 @@ export default function ReportDetail() {
     return (
       <>
         <Breadcrumbs>
-          <Breadcrumbs.Item href="/">MCP Submissions</Breadcrumbs.Item>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
         </Breadcrumbs>
         <Message state="alert">
           <strong>Error loading report:</strong> {(error as Error).message}
@@ -120,7 +124,9 @@ export default function ReportDetail() {
     return (
       <>
         <Breadcrumbs>
-          <Breadcrumbs.Item href="/">MCP Submissions</Breadcrumbs.Item>
+          <Breadcrumbs.Item>
+            <Link to="/">MCP Submissions</Link>
+          </Breadcrumbs.Item>
         </Breadcrumbs>
         <Message state="warning">Report not found</Message>
       </>
@@ -130,7 +136,9 @@ export default function ReportDetail() {
   return (
     <>
       <Breadcrumbs>
-        <Breadcrumbs.Item href="/">MCP Submissions</Breadcrumbs.Item>
+        <Breadcrumbs.Item>
+          <Link to="/">MCP Submissions</Link>
+        </Breadcrumbs.Item>
         <Breadcrumbs.Item>{report.server_name}</Breadcrumbs.Item>
       </Breadcrumbs>
 

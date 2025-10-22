@@ -2,26 +2,22 @@
  * Report card component for displaying report summaries
  */
 
-import { Card, Ellipsis, FormatDate, Message } from "@intility/bifrost-react";
+import { Card, Ellipsis, FormatDate } from "@intility/bifrost-react";
 import { Link } from "react-router";
 import type { ReportSummary } from "../types/api";
 import { StatusBadge } from "./StatusBadge";
 
 interface ReportCardProps {
   report: ReportSummary;
-  showRejectionReason?: boolean;
 }
 
-export function ReportCard({
-  report,
-  showRejectionReason = false,
-}: ReportCardProps) {
+export function ReportCard({ report }: ReportCardProps) {
   return (
     <Link
       to={`/reports/${report.id}`}
       style={{ textDecoration: "none", color: "inherit" }}
     >
-      <Card>
+      <Card radius="s">
         <Card.Title>
           <div
             style={{
@@ -31,7 +27,9 @@ export function ReportCard({
             }}
           >
             <span>{report.server_name}</span>
-            <StatusBadge status={report.status} />
+            <span style={{ pointerEvents: "none" }}>
+              <StatusBadge status={report.status} />
+            </span>
           </div>
         </Card.Title>
         <Card.Content>
@@ -57,18 +55,6 @@ export function ReportCard({
                 <FormatDate date={new Date(report.reviewed_at)} />
               </div>
             )}
-            {showRejectionReason &&
-              report.status === "rejected" &&
-              report.review_notes && (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <Message state="warning">
-                    <strong>Why it was not approved:</strong>
-                    <p style={{ margin: "0.5rem 0 0 0" }}>
-                      {report.review_notes}
-                    </p>
-                  </Message>
-                </div>
-              )}
           </div>
         </Card.Content>
       </Card>

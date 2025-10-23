@@ -18,6 +18,7 @@ import {
   Tabs,
 } from "@intility/bifrost-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { useReports } from "../api/queries";
 import PageHeader from "../components/PageHeader";
 import { ReportCard } from "../components/ReportCard";
@@ -119,13 +120,13 @@ export default function Dashboard() {
                 : `No ${statusName} reports found.`}
           </Message>
         ) : viewMode === "card" ? (
-          <Grid cols={1} gap="1rem">
+          <Grid cols={1} gap={16}>
             {reports.map((report) => (
               <ReportCard key={report.id} report={report} />
             ))}
           </Grid>
         ) : (
-          <Table noBorder radius="s">
+          <Table noBorder radius="m">
             <Table.Header>
               <Table.Row>
                 {isMobile && <Table.HeaderCell></Table.HeaderCell>}
@@ -140,9 +141,6 @@ export default function Dashboard() {
               {reports.map((report) => (
                 <Table.Row
                   key={report.id}
-                  onClick={() => {
-                    window.location.href = `/reports/${report.id}`;
-                  }}
                   limitExpandClick={isMobile}
                   content={
                     isMobile ? (
@@ -181,7 +179,15 @@ export default function Dashboard() {
                     ) : undefined
                   }
                 >
-                  <Table.Cell>{report.server_name}</Table.Cell>
+                  <Table.Cell>
+                    <Link
+                      to={`/reports/${report.id}`}
+                      className="bf-link"
+                      style={{ textDecoration: "none" }}
+                    >
+                      {report.server_name}
+                    </Link>
+                  </Table.Cell>
                   {!isMobile && (
                     <Table.Cell>{report.developer_email}</Table.Cell>
                   )}
@@ -201,7 +207,7 @@ export default function Dashboard() {
                       )}
                     </Table.Cell>
                   )}
-                  <Table.Cell onClick={(e) => e.stopPropagation()}>
+                  <Table.Cell>
                     <StatusBadge status={report.status} />
                   </Table.Cell>
                 </Table.Row>

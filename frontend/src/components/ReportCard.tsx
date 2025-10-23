@@ -2,7 +2,7 @@
  * Report card component for displaying report summaries
  */
 
-import { Card, Ellipsis, FormatDate } from "@intility/bifrost-react";
+import { Ellipsis, FormatDate, Section } from "@intility/bifrost-react";
 import { Link } from "react-router";
 import type { ReportSummary } from "../types/api";
 import { StatusBadge } from "./StatusBadge";
@@ -13,51 +13,94 @@ interface ReportCardProps {
 
 export function ReportCard({ report }: ReportCardProps) {
   return (
-    <Link
-      to={`/reports/${report.id}`}
-      style={{ textDecoration: "none", color: "inherit" }}
-    >
-      <Card radius="s">
-        <Card.Title>
+    <Section shadow={false}>
+      <Link
+        to={`/reports/${report.id}`}
+        style={{ textDecoration: "none" }}
+        className="bf-neutral-link"
+      >
+        <Section.Header arrow>
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
+              justifyContent: "space-between",
+              gap: "var(--bf-spacing-m)",
             }}
           >
-            <span>{report.server_name}</span>
-            <span style={{ pointerEvents: "none" }}>
+            <span className="bf-neutral-link-text">{report.server_name}</span>
+            <span style={{ marginRight: "16px" }}>
               <StatusBadge status={report.status} />
             </span>
           </div>
-        </Card.Title>
-        <Card.Content>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-          >
-            <div>
-              <strong>Repository:</strong>{" "}
-              <Ellipsis style={{ maxWidth: "400px" }}>
-                {report.repository_url}
-              </Ellipsis>
+        </Section.Header>
+      </Link>
+      <Section.Content>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: "var(--bfc-base-c-2)",
+                fontSize: "0.875rem",
+                marginBottom: "var(--bf-spacing-xs)",
+              }}
+            >
+              Repository
+            </div>
+            <Ellipsis style={{ maxWidth: "400px" }}>
+              {report.repository_url}
+            </Ellipsis>
+          </div>
+          <div>
+            <div
+              style={{
+                color: "var(--bfc-base-c-2)",
+                fontSize: "0.875rem",
+                marginBottom: "var(--bf-spacing-xs)",
+              }}
+            >
+              Developer
+            </div>
+            <div>{report.developer_email}</div>
+          </div>
+          <div>
+            <div
+              style={{
+                color: "var(--bfc-base-c-2)",
+                fontSize: "0.875rem",
+                marginBottom: "var(--bf-spacing-xs)",
+              }}
+            >
+              Submitted
             </div>
             <div>
-              <strong>Developer:</strong> {report.developer_email}
-            </div>
-            <div>
-              <strong>Submitted:</strong>{" "}
               <FormatDate date={new Date(report.submitted_at)} />
             </div>
-            {report.reviewed_at && (
+          </div>
+          {report.reviewed_at && (
+            <div>
+              <div
+                style={{
+                  color: "var(--bfc-base-c-2)",
+                  fontSize: "0.875rem",
+                  marginBottom: "var(--bf-spacing-xs)",
+                }}
+              >
+                Reviewed
+              </div>
               <div>
-                <strong>Reviewed:</strong>{" "}
                 <FormatDate date={new Date(report.reviewed_at)} />
               </div>
-            )}
-          </div>
-        </Card.Content>
-      </Card>
-    </Link>
+            </div>
+          )}
+        </div>
+      </Section.Content>
+    </Section>
   );
 }

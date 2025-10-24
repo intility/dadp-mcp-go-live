@@ -158,6 +158,17 @@ export const reportsApi = {
       review_notes: notes,
     });
   },
+
+  /**
+   * Delete a report
+   */
+  async delete(id: string): Promise<void> {
+    if (USE_MOCK_DATA) {
+      return Promise.resolve();
+    }
+
+    await api.delete(`reports/${id}`);
+  },
 };
 
 /**

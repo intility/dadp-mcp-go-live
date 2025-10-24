@@ -32,12 +32,15 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 800);
 
   const { data: allReports, isLoading: loadingAll } = useReports();
+  const { data: pendingReports, isLoading: loadingPending } =
+    useReports("pending_review");
   const { data: approvedReports, isLoading: loadingApproved } =
     useReports("approved");
   const { data: rejectedReports, isLoading: loadingRejected } =
     useReports("rejected");
 
-  const isLoading = loadingAll || loadingApproved || loadingRejected;
+  const isLoading =
+    loadingAll || loadingPending || loadingApproved || loadingRejected;
 
   // Listen for window resize to update mobile state
   useEffect(() => {
@@ -53,11 +56,14 @@ export default function Dashboard() {
     setNameFilter(e.target.value);
   };
 
-  // Filter out pending_review reports and filter by MCP server name
-  const filterByName = (reports: typeof allReports) => {
-    let filtered = reports?.filter(
-      (report) => report.status !== "pending_review",
-    );
+  // Filter by MCP server name
+  const filterByName = (reports: typeof allReports, excludePending = true) => {
+    let filtered = reports;
+    if (excludePending) {
+      filtered = reports?.filter(
+        (report) => report.status !== "pending_review",
+      );
+    }
     if (nameFilter) {
       filtered = filtered?.filter((report) =>
         report.server_name.toLowerCase().includes(nameFilter.toLowerCase()),
@@ -67,6 +73,7 @@ export default function Dashboard() {
   };
 
   const filteredAllReports = filterByName(allReports);
+  const filteredPendingReports = filterByName(pendingReports, false);
   const filteredApprovedReports = filterByName(approvedReports);
   const filteredRejectedReports = filterByName(rejectedReports);
 
@@ -245,6 +252,18 @@ export default function Dashboard() {
               All Submissions{" "}
               <span style={{ color: "var(--bf-color-fg-subtle)" }}>
                 ({filteredAllReports?.length || 0})
+              </span>
+            </Tabs.Item>
+
+            <Tabs.Item
+              content={renderReportList(
+                filteredPendingReports,
+                "pending review",
+              )}
+            >
+              Pending Review{" "}
+              <span style={{ color: "var(--bf-color-fg-warning)" }}>
+                ({filteredPendingReports?.length || 0})
               </span>
             </Tabs.Item>
 

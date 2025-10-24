@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use chrono::{DateTime, Utc};
@@ -26,6 +26,7 @@ struct Report {
     developer_email: String,
     report_data: String,
     report_json: JsonValue,
+    raw_json: Option<JsonValue>,
     status: String,
     submitted_at: DateTime<Utc>,
     reviewed_at: Option<DateTime<Utc>>,
@@ -40,6 +41,7 @@ struct CreateReportRequest {
     developer_email: String,
     report_data: String,
     report_json: JsonValue,
+    raw_json: Option<JsonValue>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,8 +107,8 @@ async fn create_report(
 ) -> Result<(StatusCode, Json<Report>), (StatusCode, Json<ErrorResponse>)> {
     let report = sqlx::query_as::<_, Report>(
         r#"
-        INSERT INTO mcp_server_reports (server_name, repository_url, developer_email, report_data, report_json)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO mcp_server_reports (server_name, repository_url, developer_email, report_data, report_json, raw_json)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         "#,
     )
@@ -115,21 +117,16 @@ async fn create_report(
     .bind(&req.developer_email)
     .bind(&req.report_data)
     .bind(&req.report_json)
+    .bind(&req.raw_json)
     .fetch_one(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to create report: {}", e);
-        let error_msg = if e.to_string().contains("unique_repository") {
-            format!(
-                "Report already exists for repository: {}",
-                req.repository_url
-            )
-        } else {
-            "Failed to create report".to_string()
-        };
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: error_msg }),
+            Json(ErrorResponse {
+                error: "Failed to create report".to_string(),
+            }),
         )
     })?;
 
@@ -199,11 +196,11 @@ async fn update_status(
     Json(req): Json<UpdateStatusRequest>,
 ) -> Result<Json<Report>, (StatusCode, Json<ErrorResponse>)> {
     // Validate status
-    if !["approved", "rejected"].contains(&req.status.as_str()) {
+    if !["approved", "rejected", "pending_review"].contains(&req.status.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: "Status must be 'approved' or 'rejected'".to_string(),
+                error: "Status must be 'approved', 'rejected', or 'pending_review'".to_string(),
             }),
         ));
     }
@@ -236,9 +233,39 @@ async fn update_status(
         "Updated report {} status to {} by {}",
         report.id,
         report.status,
-        report.reviewed_by.as_ref().unwrap()
+        report.reviewed_by.as_ref().unwrap_or(&"N/A".to_string())
     );
     Ok(Json(report))
+}
+
+async fn delete_report(
+    State(pool): State<PgPool>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let result = sqlx::query!("DELETE FROM mcp_server_reports WHERE id = $1", id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to delete report {}: {}", id, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Failed to delete report".to_string(),
+                }),
+            )
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Report not found: {}", id),
+            }),
+        ));
+    }
+
+    tracing::info!("Deleted report {}", id);
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ============================================================================
@@ -445,6 +472,7 @@ async fn main() {
         .route("/api/v1/reports", post(create_report))
         .route("/api/v1/reports", get(list_reports))
         .route("/api/v1/reports/{id}", get(get_report))
+        .route("/api/v1/reports/{id}", delete(delete_report))
         .route("/api/v1/reports/{id}/status", patch(update_status))
         // Phase 3: Analytics endpoints
         .route("/api/v1/reports/analytics/risk-distribution", get(get_risk_distribution))

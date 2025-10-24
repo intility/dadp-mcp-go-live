@@ -124,3 +124,18 @@ export function useRejectReport() {
     },
   });
 }
+
+/**
+ * Hook to delete a report
+ */
+export function useDeleteReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => reportsApi.delete(id),
+    onSuccess: () => {
+      // Invalidate all lists after deletion
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.lists() });
+    },
+  });
+}

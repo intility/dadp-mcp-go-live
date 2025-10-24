@@ -1,5 +1,7 @@
 """MCP Go-Live Server - FastMCP implementation with HTTP transport."""
 
+from urllib.parse import urlparse
+
 from fastmcp import FastMCP
 
 from .config import settings
@@ -137,9 +139,16 @@ Use `submit_report` to submit a go-live report.
         result += "|-------------|------------|--------|-----------|-------------|\n"
 
         for report in reports:
+            # Safely parse URL to extract repository path
+            parsed_url = urlparse(report.repository_url)
+            hostname = parsed_url.netloc.lower() if parsed_url.netloc else ""
+
+            # Check if hostname is github.com or subdomain of github.com
+            is_github = hostname == "github.com" or hostname.endswith(".github.com")
+
             repo_short = (
-                report.repository_url.split("github.com/")[-1]
-                if "github.com" in report.repository_url
+                parsed_url.path.lstrip("/")
+                if is_github and parsed_url.path
                 else report.repository_url
             )
             submitted = report.submitted_at.split("T")[0]  # Just date

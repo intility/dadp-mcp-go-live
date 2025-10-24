@@ -47,12 +47,18 @@ export function ReportCard({ report }: ReportCardProps) {
             </div>
             <div>
               <strong>Submitted:</strong>{" "}
-              <FormatDate date={new Date(report.submitted_at)} />
+              <FormatDate
+                date={new Date(report.submitted_at)}
+                show="datetime"
+              />
             </div>
             {report.reviewed_at && (
               <div>
                 <strong>Reviewed:</strong>{" "}
-                <FormatDate date={new Date(report.reviewed_at)} />
+                <FormatDate
+                  date={new Date(report.reviewed_at)}
+                  show="datetime"
+                />
               </div>
             )}
           </div>

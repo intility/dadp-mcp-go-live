@@ -5,6 +5,7 @@
 import {
   Badge,
   Breadcrumbs,
+  Button,
   FormatDate,
   Grid,
   Icon,
@@ -13,14 +14,23 @@ import {
   Table,
 } from "@intility/bifrost-react";
 import Markdown from "react-markdown";
-import { Link, useParams } from "react-router";
-import { useReport } from "../api/queries";
+import { Link, useNavigate, useParams } from "react-router";
+import remarkGfm from "remark-gfm";
+import {
+  useApproveReport,
+  useDeleteReport,
+  useRejectReport,
+  useReport,
+} from "../api/queries";
 import { StatusBadge } from "../components/StatusBadge";
+import type { SecurityReviewItem } from "../types/api";
 
-interface SecurityReviewItem {
-  type: string;
-  status: string;
-  description: string;
+function cleanMarkdown(markdown: string): string {
+  // Remove trailing backslashes that break rendering
+  return markdown
+    .split("\n")
+    .map((line) => line.replace(/\\+$/, ""))
+    .join("\n");
 }
 
 function parseReportContent(markdown: string) {
@@ -82,7 +92,48 @@ function parseSecurityReview(content: string): SecurityReviewItem[] {
 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: report, isLoading, error } = useReport(id ?? "");
+  const deleteReport = useDeleteReport();
+  const approveReport = useApproveReport();
+  const rejectReport = useRejectReport();
+  const reviewerEmail = "platform@intility.no";
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm("Are you sure you want to delete this report?")) return;
+
+    try {
+      await deleteReport.mutateAsync(id);
+      navigate("/");
+    } catch (error) {
+      alert(`Failed to delete report: ${error}`);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!id) return;
+    const notes = window.prompt("Add approval notes (optional):");
+    if (notes === null) return; // User cancelled
+
+    try {
+      await approveReport.mutateAsync({ id, reviewedBy: reviewerEmail, notes });
+    } catch (error) {
+      alert(`Failed to approve report: ${error}`);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!id) return;
+    const notes = window.prompt("Add rejection notes (required):");
+    if (!notes) return; // User cancelled or empty
+
+    try {
+      await rejectReport.mutateAsync({ id, reviewedBy: reviewerEmail, notes });
+    } catch (error) {
+      alert(`Failed to reject report: ${error}`);
+    }
+  };
 
   if (!id) {
     return (
@@ -154,6 +205,39 @@ export default function ReportDetail() {
         <StatusBadge status={report.status} />
       </div>
 
+      {/* Action Buttons */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <Button
+          onClick={handleApprove}
+          state="success"
+          disabled={approveReport.isPending}
+        >
+          {approveReport.isPending ? "Approving..." : "Approve"}
+        </Button>
+        <Button
+          onClick={handleReject}
+          state="alert"
+          disabled={rejectReport.isPending}
+        >
+          {rejectReport.isPending ? "Rejecting..." : "Reject"}
+        </Button>
+        <Button
+          onClick={handleDelete}
+          state="alert"
+          variant="outline"
+          disabled={deleteReport.isPending}
+          style={{ marginLeft: "auto" }}
+        >
+          {deleteReport.isPending ? "Deleting..." : "Delete"}
+        </Button>
+      </div>
+
       <Grid cols={1} gap="1.5rem">
         {/* Report Metadata */}
         <Section>
@@ -194,7 +278,10 @@ export default function ReportDetail() {
                 <strong>Submitted:</strong>
               </dt>
               <dd>
-                <FormatDate date={new Date(report.submitted_at)} />
+                <FormatDate
+                  date={new Date(report.submitted_at)}
+                  show="datetime"
+                />
               </dd>
 
               {report.reviewed_at && (
@@ -203,7 +290,10 @@ export default function ReportDetail() {
                     <strong>Reviewed:</strong>
                   </dt>
                   <dd>
-                    <FormatDate date={new Date(report.reviewed_at)} />
+                    <FormatDate
+                      date={new Date(report.reviewed_at)}
+                      show="datetime"
+                    />
                   </dd>
                 </>
               )}
@@ -211,43 +301,179 @@ export default function ReportDetail() {
           </Section.Content>
         </Section>
 
+        {/* Structured Report Summary */}
+        {report.report_json && (
+          <Section>
+            <Section.Header>Report Summary</Section.Header>
+            <Section.Content>
+              <dl
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "200px 1fr",
+                  gap: "0.75rem",
+                  margin: 0,
+                }}
+              >
+                {report.report_json.executive_summary?.overall_status && (
+                  <>
+                    <dt>
+                      <strong>Overall Status:</strong>
+                    </dt>
+                    <dd>
+                      <Badge
+                        state={
+                          report.report_json.executive_summary
+                            .overall_status === "APPROVED"
+                            ? "success"
+                            : "warning"
+                        }
+                      >
+                        {report.report_json.executive_summary.overall_status}
+                      </Badge>
+                    </dd>
+                  </>
+                )}
+
+                {report.report_json.phase1_security?.risk_level && (
+                  <>
+                    <dt>
+                      <strong>Risk Level:</strong>
+                    </dt>
+                    <dd>
+                      <Badge
+                        state={
+                          report.report_json.phase1_security.risk_level ===
+                            "LOW" ||
+                          report.report_json.phase1_security.risk_level ===
+                            "MEDIUM"
+                            ? "success"
+                            : "alert"
+                        }
+                      >
+                        {report.report_json.phase1_security.risk_level}
+                      </Badge>
+                    </dd>
+                  </>
+                )}
+
+                {report.report_json.executive_summary?.critical_issues_count !==
+                  undefined && (
+                  <>
+                    <dt>
+                      <strong>Critical Issues:</strong>
+                    </dt>
+                    <dd>
+                      <Badge
+                        state={
+                          report.report_json.executive_summary
+                            .critical_issues_count === 0
+                            ? "success"
+                            : "alert"
+                        }
+                      >
+                        {
+                          report.report_json.executive_summary
+                            .critical_issues_count
+                        }
+                      </Badge>
+                    </dd>
+                  </>
+                )}
+
+                {report.report_json.report_version && (
+                  <>
+                    <dt>
+                      <strong>Report Version:</strong>
+                    </dt>
+                    <dd>{report.report_json.report_version}</dd>
+                  </>
+                )}
+              </dl>
+            </Section.Content>
+          </Section>
+        )}
+
         {/* Security Review */}
         {(() => {
-          const sections = parseReportContent(report.report_data);
-          const securityContent = sections["Security Review"];
-          if (securityContent) {
-            const items = parseSecurityReview(securityContent);
-            return (
-              <Section style={{ overflow: "hidden" }}>
-                <Section.Header>Security Review</Section.Header>
-                <Section.Content padding={0}>
-                  <Table noBorder style={{ margin: 0 }}>
-                    <Table.Header>
-                      <Table.Row>
-                        <Table.HeaderCell>Type</Table.HeaderCell>
-                        <Table.HeaderCell>Status</Table.HeaderCell>
-                        <Table.HeaderCell>Description</Table.HeaderCell>
-                      </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                      {items.map((item) => (
-                        <Table.Row key={item.type}>
-                          <Table.Cell>{item.type}</Table.Cell>
-                          <Table.Cell>
-                            <Badge state={item.status as "success" | "alert"}>
-                              {item.status === "success" ? "Pass" : "Fail"}
-                            </Badge>
-                          </Table.Cell>
-                          <Table.Cell>{item.description}</Table.Cell>
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table>
-                </Section.Content>
-              </Section>
-            );
+          // Try to get security review from structured JSON first
+          const securityReviewItems =
+            report.report_json?.security_review?.items;
+
+          // Fall back to parsing from markdown if not in JSON
+          if (!securityReviewItems) {
+            const sections = parseReportContent(report.report_data);
+            const securityContent = sections["Security Review"];
+            if (securityContent) {
+              const items = parseSecurityReview(securityContent);
+              if (items.length > 0) {
+                return (
+                  <Section style={{ overflow: "hidden" }}>
+                    <Section.Header>Security Review</Section.Header>
+                    <Section.Content padding={0}>
+                      <Table noBorder style={{ margin: 0 }}>
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.HeaderCell>Type</Table.HeaderCell>
+                            <Table.HeaderCell>Status</Table.HeaderCell>
+                            <Table.HeaderCell>Description</Table.HeaderCell>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {items.map((item) => (
+                            <Table.Row key={item.type}>
+                              <Table.Cell>{item.type}</Table.Cell>
+                              <Table.Cell>
+                                <Badge
+                                  state={item.status as "success" | "alert"}
+                                >
+                                  {item.status === "success" ? "Pass" : "Fail"}
+                                </Badge>
+                              </Table.Cell>
+                              <Table.Cell>{item.description}</Table.Cell>
+                            </Table.Row>
+                          ))}
+                        </Table.Body>
+                      </Table>
+                    </Section.Content>
+                  </Section>
+                );
+              }
+            }
+            return null;
           }
-          return null;
+
+          // Render from structured JSON
+          return (
+            <Section style={{ overflow: "hidden" }}>
+              <Section.Header>Security Review</Section.Header>
+              <Section.Content padding={0}>
+                <Table noBorder style={{ margin: 0 }}>
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.HeaderCell>Type</Table.HeaderCell>
+                      <Table.HeaderCell>Status</Table.HeaderCell>
+                      <Table.HeaderCell>Description</Table.HeaderCell>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {securityReviewItems.map((item: SecurityReviewItem) => (
+                      <Table.Row key={item.type}>
+                        <Table.Cell>{item.type}</Table.Cell>
+                        <Table.Cell>
+                          <Badge
+                            state={item.status === "Pass" ? "success" : "alert"}
+                          >
+                            {item.status}
+                          </Badge>
+                        </Table.Cell>
+                        <Table.Cell>{item.description}</Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table>
+              </Section.Content>
+            </Section>
+          );
         })()}
 
         {/* Testing */}
@@ -260,7 +486,9 @@ export default function ReportDetail() {
                 <Section.Header>Testing</Section.Header>
                 <Section.Content>
                   <div className="markdown-content" style={{ margin: 0 }}>
-                    <Markdown>{testingContent}</Markdown>
+                    <Markdown remarkPlugins={[remarkGfm]}>
+                      {cleanMarkdown(testingContent)}
+                    </Markdown>
                   </div>
                 </Section.Content>
               </Section>
@@ -268,6 +496,18 @@ export default function ReportDetail() {
           }
           return null;
         })()}
+
+        {/* Full Report */}
+        <Section>
+          <Section.Header>Full Report</Section.Header>
+          <Section.Content>
+            <div className="markdown-content" style={{ margin: 0 }}>
+              <Markdown remarkPlugins={[remarkGfm]}>
+                {cleanMarkdown(report.report_data)}
+              </Markdown>
+            </div>
+          </Section.Content>
+        </Section>
 
         {/* Review Notes */}
         {report.review_notes && (

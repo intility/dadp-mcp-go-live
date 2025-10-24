@@ -243,36 +243,59 @@ export default function ReportDetail() {
         <Section>
           <Section.Header>Report Information</Section.Header>
           <Section.Content>
-            <dl
+            <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "200px 1fr",
-                gap: "0.75rem",
-                margin: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
               }}
             >
-              <dt>
-                <strong>Server Name:</strong>
-              </dt>
-              <dd>{report.server_name}</dd>
-
-              <dt>
-                <strong>Repository URL:</strong>
-              </dt>
-              <dd>
-                <a
-                  href={report.repository_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <div>
+                <div
+                  style={{
+                    color: "var(--bfc-base-c-2)",
+                    fontSize: "0.875rem",
+                    marginBottom: "var(--bf-spacing-xs)",
+                  }}
                 >
-                  {report.repository_url}
-                </a>
-              </dd>
+                  Server Name
+                </div>
+                <div>{report.server_name}</div>
+              </div>
 
-              <dt>
-                <strong>Developer:</strong>
-              </dt>
-              <dd>{report.developer_email}</dd>
+              <div>
+                <div
+                  style={{
+                    color: "var(--bfc-base-c-2)",
+                    fontSize: "0.875rem",
+                    marginBottom: "var(--bf-spacing-xs)",
+                  }}
+                >
+                  Repository URL
+                </div>
+                <div>
+                  <a
+                    href={report.repository_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {report.repository_url}
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "var(--bfc-base-c-2)",
+                    fontSize: "0.875rem",
+                    marginBottom: "var(--bf-spacing-xs)",
+                  }}
+                >
+                  Developer
+                </div>
+                <div>{report.developer_email}</div>
+              </div>
 
               <dt>
                 <strong>Submitted:</strong>
@@ -297,7 +320,7 @@ export default function ReportDetail() {
                   </dd>
                 </>
               )}
-            </dl>
+            </div>
           </Section.Content>
         </Section>
 

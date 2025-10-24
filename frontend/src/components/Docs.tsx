@@ -79,7 +79,7 @@ export default function Docs() {
   return (
     <Grid cols={1} small={3}>
       {docs.map((doc) => (
-        <Box className={styles.card} shadow radius key={doc.name}>
+        <Box className={styles.card} shadow radius="m" key={doc.name}>
           <a
             className="bf-neutral-link"
             href={doc.link}
@@ -91,7 +91,9 @@ export default function Docs() {
             </Box>
             <Box padding radiusBottomLeft radiusBottomRight>
               <h3 className="bf-neutral-link-text bf-h5">{doc.name}</h3>
-              <span>{doc.description}</span>
+              <span style={{ color: "var(--bf-color-base-c-2)" }}>
+                {doc.description}
+              </span>
             </Box>
           </a>
         </Box>

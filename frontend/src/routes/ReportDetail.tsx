@@ -2,8 +2,11 @@
  * Report detail page - View full report and review
  */
 
+import { faArrowDownToLine, faTrash } from "@fortawesome/pro-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Badge,
+  Box,
   Breadcrumbs,
   Button,
   FormatDate,
@@ -13,9 +16,7 @@ import {
   Section,
   Table,
 } from "@intility/bifrost-react";
-import Markdown from "react-markdown";
 import { Link, useNavigate, useParams } from "react-router";
-import remarkGfm from "remark-gfm";
 import {
   useApproveReport,
   useDeleteReport,
@@ -24,14 +25,6 @@ import {
 } from "../api/queries";
 import { StatusBadge } from "../components/StatusBadge";
 import type { SecurityReviewItem } from "../types/api";
-
-function cleanMarkdown(markdown: string): string {
-  // Remove trailing backslashes that break rendering
-  return markdown
-    .split("\n")
-    .map((line) => line.replace(/\\+$/, ""))
-    .join("\n");
-}
 
 function parseReportContent(markdown: string) {
   const sections: { [key: string]: string } = {};
@@ -135,6 +128,25 @@ export default function ReportDetail() {
     }
   };
 
+  const handleDownload = () => {
+    if (!report) return;
+
+    // Create a blob from the markdown content
+    const blob = new Blob([report.report_data], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link and trigger download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${report.server_name.replace(/[^a-z0-9]/gi, "_")}_report.md`;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (!id) {
     return (
       <>
@@ -186,162 +198,261 @@ export default function ReportDetail() {
 
   return (
     <>
-      <Breadcrumbs>
+      <Breadcrumbs style={{ marginBottom: "1.5rem" }}>
         <Breadcrumbs.Item>
           <Link to="/">MCP Submissions</Link>
         </Breadcrumbs.Item>
         <Breadcrumbs.Item>{report.server_name}</Breadcrumbs.Item>
       </Breadcrumbs>
 
-      <div
+      <Box
+        radius
+        shadow
+        background
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1rem",
+          marginBottom: "24px",
+          padding: "24px 24px 16px 24px",
+          position: "relative",
         }}
       >
-        <h1 style={{ margin: 0 }}>{report.server_name}</h1>
-        <StatusBadge status={report.status} />
-      </div>
+        <style>
+          {`
+            .header-buttons-wrapper {
+              position: absolute;
+              top: 24px;
+              right: 24px;
+            }
+            .report-summary-grid {
+              display: grid;
+              grid-template-columns: 200px 1fr;
+              gap: 0.75rem;
+              margin: 0;
+            }
+            @media (max-width: 799px) {
+              .header-buttons-wrapper {
+                position: static;
+                width: calc(100% + 48px);
+                padding-top: 16px;
+                border-top: 1px solid var(--bfc-base-dimmed);
+                margin-top: 16px;
+                margin-left: -24px;
+                margin-right: -24px;
+                padding-left: 24px;
+                padding-right: 24px;
+              }
+              .action-buttons-group {
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+              }
+            }
+            @media (max-width: 599px) {
+              .header-buttons-wrapper {
+                flex-direction: column-reverse;
+                align-items: stretch;
+              }
+              .header-buttons-group {
+                width: 100%;
+              }
+              .report-summary-grid {
+                grid-template-columns: auto 1fr;
+                gap: 0.5rem;
+              }
+            }
+          `}
+        </style>
 
-      {/* Action Buttons */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <Button
-          onClick={handleApprove}
-          state="success"
-          disabled={approveReport.isPending}
+        {/* Top row: Status badge */}
+        <div
+          className="header-title-section"
+          style={{
+            marginBottom: "4px",
+          }}
         >
-          {approveReport.isPending ? "Approving..." : "Approve"}
-        </Button>
-        <Button
-          onClick={handleReject}
-          state="alert"
-          disabled={rejectReport.isPending}
-        >
-          {rejectReport.isPending ? "Rejecting..." : "Reject"}
-        </Button>
-        <Button
-          onClick={handleDelete}
-          state="alert"
-          variant="outline"
-          disabled={deleteReport.isPending}
-          style={{ marginLeft: "auto" }}
-        >
-          {deleteReport.isPending ? "Deleting..." : "Delete"}
-        </Button>
-      </div>
+          <StatusBadge status={report.status} />
+        </div>
 
-      <Grid cols={1} gap="1.5rem">
-        {/* Report Metadata */}
-        <Section>
-          <Section.Header>Report Information</Section.Header>
-          <Section.Content>
-            <div
+        {/* Title */}
+        <h3
+          style={{ margin: "0 0 16px 0", fontSize: "1.5rem", fontWeight: 600 }}
+        >
+          {report.server_name}
+        </h3>
+
+        {/* Separator line */}
+        <div
+          style={{
+            borderTop: "1px solid var(--bfc-base-dimmed)",
+            margin: "0 -24px 0 -24px",
+          }}
+        />
+
+        {/* Metadata row */}
+        <div
+          className="metadata-row"
+          style={{
+            display: "flex",
+            gap: "1rem",
+            fontSize: "0.875rem",
+            color: "var(--bfc-base-c-2)",
+            marginTop: "16px",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
+        >
+          <style>
+            {`
+              @media (max-width: 1279px) {
+                .metadata-row {
+                  flex-direction: column !important;
+                  gap: 0.75rem !important;
+                }
+                .metadata-item {
+                  border-left: none !important;
+                  padding-left: 0 !important;
+                }
+              }
+            `}
+          </style>
+          <div
+            className="metadata-item"
+            style={{ display: "flex", gap: "8px" }}
+          >
+            <span>Repository URL:</span>
+            <a
+              href={report.repository_url}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
+                textDecoration: "none",
+                color: "var(--bfc-theme)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
               }}
             >
-              <div>
-                <div
-                  style={{
-                    color: "var(--bfc-base-c-2)",
-                    fontSize: "0.875rem",
-                    marginBottom: "var(--bf-spacing-xs)",
-                  }}
-                >
-                  Server Name
-                </div>
-                <div>{report.server_name}</div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    color: "var(--bfc-base-c-2)",
-                    fontSize: "0.875rem",
-                    marginBottom: "var(--bf-spacing-xs)",
-                  }}
-                >
-                  Repository URL
-                </div>
-                <div>
-                  <a
-                    href={report.repository_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {report.repository_url}
-                  </a>
-                </div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    color: "var(--bfc-base-c-2)",
-                    fontSize: "0.875rem",
-                    marginBottom: "var(--bf-spacing-xs)",
-                  }}
-                >
-                  Developer
-                </div>
-                <div>{report.developer_email}</div>
-              </div>
-
-              <dt>
-                <strong>Submitted:</strong>
-              </dt>
-              <dd>
+              {report.repository_url}
+            </a>
+          </div>
+          <div
+            className="metadata-item"
+            style={{
+              borderLeft: "1px solid var(--bfc-base-dimmed)",
+              paddingLeft: "1rem",
+              display: "flex",
+              gap: "8px",
+            }}
+          >
+            <span>Developer:</span>
+            <span style={{ color: "var(--bfc-base-c-1)" }}>
+              {report.developer_email}
+            </span>
+          </div>
+          <div
+            className="metadata-item"
+            style={{
+              borderLeft: "1px solid var(--bfc-base-dimmed)",
+              paddingLeft: "1rem",
+              display: "flex",
+              gap: "8px",
+            }}
+          >
+            <span>Submitted:</span>
+            <span style={{ color: "var(--bfc-base-c-1)" }}>
+              <FormatDate
+                date={new Date(report.submitted_at)}
+                show="datetime"
+              />
+            </span>
+          </div>
+          {report.reviewed_at && (
+            <div
+              className="metadata-item"
+              style={{
+                borderLeft: "1px solid var(--bfc-base-dimmed)",
+                paddingLeft: "1rem",
+                display: "flex",
+                gap: "8px",
+              }}
+            >
+              <span>Reviewed:</span>
+              <span style={{ color: "var(--bfc-base-c-1)" }}>
                 <FormatDate
-                  date={new Date(report.submitted_at)}
+                  date={new Date(report.reviewed_at)}
                   show="datetime"
                 />
-              </dd>
-
-              {report.reviewed_at && (
-                <>
-                  <dt>
-                    <strong>Reviewed:</strong>
-                  </dt>
-                  <dd>
-                    <FormatDate
-                      date={new Date(report.reviewed_at)}
-                      show="datetime"
-                    />
-                  </dd>
-                </>
-              )}
+              </span>
             </div>
-          </Section.Content>
-        </Section>
+          )}
+        </div>
 
+        {/* Action Buttons */}
+        <div
+          className="header-buttons-wrapper"
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            className="action-buttons-group"
+            style={{ display: "flex", gap: "0.5rem" }}
+          >
+            <Button onClick={handleDownload} variant="flat" size="small">
+              <FontAwesomeIcon
+                icon={faArrowDownToLine}
+                style={{ marginRight: "4px" }}
+              />
+              Download report
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleteReport.isPending}
+              state="alert"
+              variant="flat"
+              size="small"
+            >
+              <FontAwesomeIcon icon={faTrash} style={{ marginRight: "4px" }} />
+              {deleteReport.isPending ? "Deleting..." : "Delete report"}
+            </Button>
+          </div>
+          <div
+            className="header-buttons-group"
+            style={{ display: "none", gap: "0.5rem" }}
+          >
+            <Button
+              onClick={handleApprove}
+              variant="filled"
+              disabled={approveReport.isPending}
+            >
+              {approveReport.isPending ? "Approving..." : "Approve"}
+            </Button>
+            <Button
+              onClick={handleReject}
+              variant="filled"
+              state="alert"
+              disabled={rejectReport.isPending}
+            >
+              {rejectReport.isPending ? "Rejecting..." : "Reject"}
+            </Button>
+          </div>
+        </div>
+      </Box>
+
+      <Grid cols={1} gap="1.5rem">
         {/* Structured Report Summary */}
         {report.report_json && (
           <Section>
             <Section.Header>Report Summary</Section.Header>
             <Section.Content>
-              <dl
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "200px 1fr",
-                  gap: "0.75rem",
-                  margin: 0,
-                }}
-              >
+              <dl className="report-summary-grid">
                 {report.report_json.executive_summary?.overall_status && (
                   <>
-                    <dt>
-                      <strong>Overall Status:</strong>
-                    </dt>
+                    <dt style={{ fontWeight: 600 }}>Overall Status:</dt>
                     <dd>
                       <Badge
                         state={
@@ -359,9 +470,7 @@ export default function ReportDetail() {
 
                 {report.report_json.phase1_security?.risk_level && (
                   <>
-                    <dt>
-                      <strong>Risk Level:</strong>
-                    </dt>
+                    <dt style={{ fontWeight: 600 }}>Risk Level:</dt>
                     <dd>
                       <Badge
                         state={
@@ -382,9 +491,7 @@ export default function ReportDetail() {
                 {report.report_json.executive_summary?.critical_issues_count !==
                   undefined && (
                   <>
-                    <dt>
-                      <strong>Critical Issues:</strong>
-                    </dt>
+                    <dt style={{ fontWeight: 600 }}>Critical Issues:</dt>
                     <dd>
                       <Badge
                         state={
@@ -405,9 +512,7 @@ export default function ReportDetail() {
 
                 {report.report_json.report_version && (
                   <>
-                    <dt>
-                      <strong>Report Version:</strong>
-                    </dt>
+                    <dt style={{ fontWeight: 600 }}>Report Version:</dt>
                     <dd>{report.report_json.report_version}</dd>
                   </>
                 )}
@@ -416,25 +521,133 @@ export default function ReportDetail() {
           </Section>
         )}
 
-        {/* Security Review */}
-        {(() => {
-          // Try to get security review from structured JSON first
-          const securityReviewItems =
-            report.report_json?.security_review?.items;
+        {/* Review Notes */}
+        {report.review_notes && (
+          <Section>
+            <Section.Header>Review Notes</Section.Header>
+            <Section.Content>
+              <div style={{ margin: 0 }}>
+                {report.review_notes
+                  .split("\n")
+                  .filter((line) => line.trim())
+                  .map((line) => {
+                    const trimmedLine = line.trim();
+                    // Check if line starts with a number followed by a period
+                    if (/^\d+\./.test(trimmedLine)) {
+                      return (
+                        <div
+                          key={trimmedLine}
+                          style={{ marginBottom: "0.5rem" }}
+                        >
+                          {trimmedLine}
+                        </div>
+                      );
+                    }
+                    // Otherwise, render as plain text
+                    return (
+                      <p key={trimmedLine} style={{ margin: "0 0 0.5rem 0" }}>
+                        {trimmedLine}
+                      </p>
+                    );
+                  })}
+              </div>
+            </Section.Content>
+          </Section>
+        )}
 
-          // Fall back to parsing from markdown if not in JSON
-          if (!securityReviewItems) {
-            const sections = parseReportContent(report.report_data);
-            const securityContent = sections["Security Review"];
-            if (securityContent) {
-              const items = parseSecurityReview(securityContent);
-              if (items.length > 0) {
+        {/* Full Report */}
+        <Section>
+          <Section.Header>Full Report</Section.Header>
+          <Section.Content>
+            {/* Security Review Table */}
+            {(() => {
+              const securityReviewItems =
+                report.report_json?.security_review?.items;
+
+              if (securityReviewItems && securityReviewItems.length > 0) {
                 return (
-                  <Section style={{ overflow: "hidden" }}>
-                    <Section.Header>Security Review</Section.Header>
-                    <Section.Content padding={0}>
-                      <Table noBorder style={{ margin: 0 }}>
+                  <div
+                    style={{
+                      marginBottom: "2rem",
+                      border: "1px solid var(--bfc-base-dimmed)",
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Table noBorder>
+                      <Table.Header>
+                        <Table.Row>
+                          <Table.HeaderCell
+                            colSpan={3}
+                            style={{
+                              borderBottom: "1px solid var(--bfc-base-dimmed)",
+                              backgroundColor: "var(--bfc-base-2)",
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>
+                              Security Review
+                            </span>
+                          </Table.HeaderCell>
+                        </Table.Row>
+                        <Table.Row>
+                          <Table.HeaderCell>Type</Table.HeaderCell>
+                          <Table.HeaderCell>Status</Table.HeaderCell>
+                          <Table.HeaderCell>Description</Table.HeaderCell>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
+                        {securityReviewItems.map((item: SecurityReviewItem) => (
+                          <Table.Row key={item.type}>
+                            <Table.Cell>{item.type}</Table.Cell>
+                            <Table.Cell>
+                              <Badge
+                                state={
+                                  item.status === "Pass" ? "success" : "alert"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </Table.Cell>
+                            <Table.Cell>{item.description}</Table.Cell>
+                          </Table.Row>
+                        ))}
+                      </Table.Body>
+                    </Table>
+                  </div>
+                );
+              }
+
+              // Fall back to parsing from markdown if not in JSON
+              const sections = parseReportContent(report.report_data);
+              const securityContent = sections["Security Review"];
+              if (securityContent) {
+                const items = parseSecurityReview(securityContent);
+                if (items.length > 0) {
+                  return (
+                    <div
+                      style={{
+                        marginBottom: "2rem",
+                        border: "1px solid var(--bfc-base-dimmed)",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Table noBorder>
                         <Table.Header>
+                          <Table.Row>
+                            <Table.HeaderCell
+                              colSpan={3}
+                              style={{
+                                borderBottom:
+                                  "1px solid var(--bfc-base-dimmed)",
+                                backgroundColor: "var(--bfc-base-2)",
+                              }}
+                            >
+                              <span style={{ fontWeight: 600 }}>
+                                Security Review
+                              </span>
+                            </Table.HeaderCell>
+                          </Table.Row>
                           <Table.Row>
                             <Table.HeaderCell>Type</Table.HeaderCell>
                             <Table.HeaderCell>Status</Table.HeaderCell>
@@ -457,90 +670,102 @@ export default function ReportDetail() {
                           ))}
                         </Table.Body>
                       </Table>
-                    </Section.Content>
-                  </Section>
+                    </div>
+                  );
+                }
+              }
+              return null;
+            })()}
+
+            {/* Testing Section */}
+            {(() => {
+              const sections = parseReportContent(report.report_data);
+              const testingContent = sections.Testing;
+              if (testingContent) {
+                // Parse testing content to get bullet points
+                const lines = testingContent
+                  .split("\n")
+                  .map((l) => l.trim())
+                  .filter((l) => l.startsWith("-"));
+
+                // Find unit tests and integration tests lines
+                const unitTestLine = lines.find((l) =>
+                  /unit\s+tests?:/i.test(l),
+                );
+                const integrationTestLine = lines.find((l) =>
+                  /integration\s+tests?:/i.test(l),
+                );
+
+                // Only render if at least one test line exists
+                if (!unitTestLine && !integrationTestLine) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    style={{
+                      marginTop: "var(--bfs24)",
+                      border: "1px solid var(--bfc-base-dimmed)",
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Table noBorder>
+                      <Table.Header>
+                        <Table.Row>
+                          <Table.HeaderCell
+                            style={{
+                              borderBottom: "1px solid var(--bfc-base-dimmed)",
+                              backgroundColor: "var(--bfc-base-2)",
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>Testing</span>
+                          </Table.HeaderCell>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
+                        {unitTestLine && (
+                          <Table.Row>
+                            <Table.Cell>
+                              {(() => {
+                                const text = unitTestLine.replace(/^-\s*/i, "");
+                                const [before, after] = text.split(":");
+                                return (
+                                  <>
+                                    <strong>{before}:</strong> {after}
+                                  </>
+                                );
+                              })()}
+                            </Table.Cell>
+                          </Table.Row>
+                        )}
+                        {integrationTestLine && (
+                          <Table.Row>
+                            <Table.Cell>
+                              {(() => {
+                                const text = integrationTestLine.replace(
+                                  /^-\s*/i,
+                                  "",
+                                );
+                                const [before, after] = text.split(":");
+                                return (
+                                  <>
+                                    <strong>{before}:</strong> {after}
+                                  </>
+                                );
+                              })()}
+                            </Table.Cell>
+                          </Table.Row>
+                        )}
+                      </Table.Body>
+                    </Table>
+                  </div>
                 );
               }
-            }
-            return null;
-          }
-
-          // Render from structured JSON
-          return (
-            <Section style={{ overflow: "hidden" }}>
-              <Section.Header>Security Review</Section.Header>
-              <Section.Content padding={0}>
-                <Table noBorder style={{ margin: 0 }}>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.HeaderCell>Type</Table.HeaderCell>
-                      <Table.HeaderCell>Status</Table.HeaderCell>
-                      <Table.HeaderCell>Description</Table.HeaderCell>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {securityReviewItems.map((item: SecurityReviewItem) => (
-                      <Table.Row key={item.type}>
-                        <Table.Cell>{item.type}</Table.Cell>
-                        <Table.Cell>
-                          <Badge
-                            state={item.status === "Pass" ? "success" : "alert"}
-                          >
-                            {item.status}
-                          </Badge>
-                        </Table.Cell>
-                        <Table.Cell>{item.description}</Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table>
-              </Section.Content>
-            </Section>
-          );
-        })()}
-
-        {/* Testing */}
-        {(() => {
-          const sections = parseReportContent(report.report_data);
-          const testingContent = sections.Testing;
-          if (testingContent) {
-            return (
-              <Section>
-                <Section.Header>Testing</Section.Header>
-                <Section.Content>
-                  <div className="markdown-content" style={{ margin: 0 }}>
-                    <Markdown remarkPlugins={[remarkGfm]}>
-                      {cleanMarkdown(testingContent)}
-                    </Markdown>
-                  </div>
-                </Section.Content>
-              </Section>
-            );
-          }
-          return null;
-        })()}
-
-        {/* Full Report */}
-        <Section>
-          <Section.Header>Full Report</Section.Header>
-          <Section.Content>
-            <div className="markdown-content" style={{ margin: 0 }}>
-              <Markdown remarkPlugins={[remarkGfm]}>
-                {cleanMarkdown(report.report_data)}
-              </Markdown>
-            </div>
+              return null;
+            })()}
           </Section.Content>
         </Section>
-
-        {/* Review Notes */}
-        {report.review_notes && (
-          <Section>
-            <Section.Header>Review Notes</Section.Header>
-            <Section.Content>
-              <p style={{ margin: 0 }}>{report.review_notes}</p>
-            </Section.Content>
-          </Section>
-        )}
       </Grid>
     </>
   );

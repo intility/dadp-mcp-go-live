@@ -145,17 +145,18 @@ export default function ReportDetail() {
         {`
           div.markdown-content {
             font-family: var(--bf-font-family-base);
-            line-height: 1.6;
+            line-height: 1.7;
             color: var(--bfc-base-c-1);
           }
 
           div.markdown-content h1 {
-            font-size: var(--bf-font-size-xl);
+            font-size: 2rem;
             font-weight: 600;
-            margin: 0 0 var(--bf-spacing-l) 0;
+            margin: 0 0 2rem 0;
             color: var(--bfc-base-c-1);
             line-height: 1.3;
-            display: block;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--bfc-base-dimmed);
           }
 
           div.markdown-content h1:first-child {
@@ -163,12 +164,13 @@ export default function ReportDetail() {
           }
 
           div.markdown-content h2 {
-            font-size: var(--bf-font-size-l);
+            font-size: 1.5rem;
             font-weight: 600;
-            margin: var(--bf-spacing-xl) 0 var(--bf-spacing-m) 0;
+            margin: 3rem 0 1.5rem 0;
             color: var(--bfc-base-c-1);
-            line-height: 1.3;
-            display: block;
+            line-height: 1.4;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--bfc-base-dimmed);
           }
 
           div.markdown-content h2:first-child {
@@ -176,54 +178,49 @@ export default function ReportDetail() {
           }
 
           div.markdown-content h3 {
-            font-size: var(--bf-font-size-m);
+            font-size: 1.25rem;
             font-weight: 600;
-            margin: var(--bf-spacing-l) 0 var(--bf-spacing-s) 0;
+            margin: 2.5rem 0 1rem 0;
             color: var(--bfc-base-c-1);
-            line-height: 1.4;
-            display: block;
+            line-height: 1.5;
           }
 
           div.markdown-content h4 {
-            font-size: var(--bf-font-size-m);
+            font-size: 1.1rem;
             font-weight: 600;
-            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            margin: 2rem 0 0.75rem 0;
             color: var(--bfc-base-c-1);
-            display: block;
           }
 
           div.markdown-content h5 {
-            font-size: var(--bf-font-size-base);
+            font-size: 1rem;
             font-weight: 600;
-            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            margin: 1.25rem 0 0.5rem 0;
             color: var(--bfc-base-c-2);
-            display: block;
           }
 
           div.markdown-content h6 {
-            font-size: var(--bf-font-size-s);
+            font-size: 0.875rem;
             font-weight: 600;
-            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            margin: 1rem 0 0.5rem 0;
             color: var(--bfc-base-c-2);
-            display: block;
           }
 
           div.markdown-content p {
-            margin: 0 0 var(--bf-spacing-m) 0;
-            font-size: var(--bf-font-size-base);
-            display: block;
+            margin: 0 0 1.5rem 0;
+            font-size: 1rem;
+            line-height: 1.8;
           }
 
           div.markdown-content ul,
           div.markdown-content ol {
-            margin: 0 0 var(--bf-spacing-m) 0;
-            padding-left: var(--bf-spacing-l);
-            display: block;
+            margin: 0 0 1.5rem 0;
+            padding-left: 2.5rem;
           }
 
           div.markdown-content li {
-            margin: var(--bf-spacing-xs) 0;
-            display: list-item;
+            margin: 0.75rem 0;
+            line-height: 1.8;
           }
 
           div.markdown-content ul li {
@@ -234,34 +231,41 @@ export default function ReportDetail() {
             list-style-type: decimal;
           }
 
+          div.markdown-content ul ul,
+          div.markdown-content ol ul,
+          div.markdown-content ul ol,
+          div.markdown-content ol ol {
+            margin: 0.5rem 0;
+          }
+
           div.markdown-content code {
-            font-family: var(--bf-font-family-mono, 'Monaco', 'Courier New', monospace);
-            font-size: var(--bf-font-size-s);
-            background-color: var(--bfc-base-2);
-            padding: var(--bf-spacing-2xs) var(--bf-spacing-xs);
-            border-radius: var(--bf-border-radius-s);
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.875rem;
+            background-color: rgba(175, 184, 193, 0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
             color: var(--bfc-base-c-1);
           }
 
           div.markdown-content pre {
-            background-color: var(--bfc-base-2);
+            background-color: rgba(175, 184, 193, 0.1);
             border: 1px solid var(--bfc-base-dimmed);
-            border-radius: var(--bf-border-radius-m);
-            padding: var(--bf-spacing-m);
+            border-radius: 6px;
+            padding: 1rem;
             overflow-x: auto;
-            margin: 0 0 var(--bf-spacing-m) 0;
+            margin: 0 0 1.25rem 0;
           }
 
           div.markdown-content pre code {
             background-color: transparent;
             padding: 0;
-            font-size: var(--bf-font-size-s);
+            font-size: 0.875rem;
           }
 
           div.markdown-content blockquote {
             border-left: 4px solid var(--bfc-theme);
-            padding-left: var(--bf-spacing-m);
-            margin: 0 0 var(--bf-spacing-m) 0;
+            padding-left: 1rem;
+            margin: 0 0 1.25rem 0;
             color: var(--bfc-base-c-2);
             font-style: italic;
           }
@@ -278,33 +282,41 @@ export default function ReportDetail() {
           div.markdown-content hr {
             border: none;
             border-top: 1px solid var(--bfc-base-dimmed);
-            margin: var(--bf-spacing-xl) 0;
+            margin: 2rem 0;
           }
 
           div.markdown-content table {
             width: 100%;
             border-collapse: collapse;
-            margin: 0 0 var(--bf-spacing-m) 0;
+            margin: 1.5rem 0 2rem 0;
             border: 1px solid var(--bfc-base-dimmed);
-            border-radius: var(--bf-border-radius-m);
+            border-radius: 6px;
             overflow: hidden;
           }
 
           div.markdown-content th {
-            background-color: var(--bfc-base-2);
-            padding: var(--bf-spacing-s);
+            background-color: rgba(175, 184, 193, 0.1);
+            padding: 1rem 1.25rem;
             text-align: left;
             font-weight: 600;
+            font-size: 0.9375rem;
             border-bottom: 1px solid var(--bfc-base-dimmed);
+            color: var(--bfc-base-c-1);
           }
 
           div.markdown-content td {
-            padding: var(--bf-spacing-s);
+            padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--bfc-base-dimmed);
+            font-size: 0.9375rem;
+            line-height: 1.6;
           }
 
           div.markdown-content tr:last-child td {
             border-bottom: none;
+          }
+
+          div.markdown-content tbody tr:hover {
+            background-color: rgba(175, 184, 193, 0.05);
           }
 
           div.markdown-content strong {
@@ -683,89 +695,11 @@ export default function ReportDetail() {
             border: "1px solid var(--bfc-base-dimmed)",
           }}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: ({ children, node }) => {
-                // Check if this is the first h1
-                const isFirstH1 = node?.position?.start?.line === 1;
-                return (
-                  <h2
-                    style={{
-                      fontSize: "var(--bf-font-size-l)",
-                      fontWeight: 600,
-                      margin: isFirstH1
-                        ? "0 0 0.75rem 0"
-                        : "1.5rem 0 0.75rem 0",
-                      color: "var(--bfc-base-c-1)",
-                    }}
-                  >
-                    {children}
-                  </h2>
-                );
-              },
-              h2: ({ children }) => (
-                <h3
-                  style={{
-                    fontSize: "var(--bf-font-size-m)",
-                    fontWeight: 600,
-                    margin: "1.25rem 0 0.5rem 0",
-                    color: "var(--bfc-base-c-1)",
-                  }}
-                >
-                  {children}
-                </h3>
-              ),
-              h3: ({ children }) => (
-                <h4
-                  style={{
-                    fontSize: "var(--bf-font-size-base)",
-                    fontWeight: 600,
-                    margin: "1rem 0 0.5rem 0",
-                    color: "var(--bfc-base-c-1)",
-                  }}
-                >
-                  {children}
-                </h4>
-              ),
-              p: ({ children }) => (
-                <p
-                  style={{
-                    margin: "0 0 1rem 0",
-                    fontSize: "var(--bf-font-size-base)",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {children}
-                </p>
-              ),
-              ul: ({ children }) => (
-                <ul
-                  style={{
-                    margin: "0 0 1rem 0",
-                    paddingLeft: "1.5rem",
-                  }}
-                >
-                  {children}
-                </ul>
-              ),
-              ol: ({ children }) => (
-                <ol
-                  style={{
-                    margin: "0 0 1rem 0",
-                    paddingLeft: "1.5rem",
-                  }}
-                >
-                  {children}
-                </ol>
-              ),
-              li: ({ children }) => (
-                <li style={{ margin: "0.25rem 0" }}>{children}</li>
-              ),
-            }}
-          >
-            {report.report_data}
-          </ReactMarkdown>
+          <div className="markdown-content">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {report.report_data}
+            </ReactMarkdown>
+          </div>
         </Box>
       </Grid>
     </>

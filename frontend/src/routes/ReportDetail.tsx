@@ -14,9 +14,10 @@ import {
   Icon,
   Message,
   Section,
-  Table,
 } from "@intility/bifrost-react";
+import ReactMarkdown from "react-markdown";
 import { Link, useNavigate, useParams } from "react-router";
+import remarkGfm from "remark-gfm";
 import {
   useApproveReport,
   useDeleteReport,
@@ -24,64 +25,6 @@ import {
   useReport,
 } from "../api/queries";
 import { StatusBadge } from "../components/StatusBadge";
-import type { SecurityReviewItem } from "../types/api";
-
-function parseReportContent(markdown: string) {
-  const sections: { [key: string]: string } = {};
-  const lines = markdown.split("\n");
-  let currentSection = "";
-  let currentContent: string[] = [];
-
-  for (const line of lines) {
-    // Check if it's a heading (h1 or h2)
-    if (line.startsWith("# ") || line.startsWith("## ")) {
-      // Save previous section
-      if (currentSection) {
-        sections[currentSection] = currentContent.join("\n").trim();
-      }
-      // Start new section
-      currentSection = line.replace(/^#+ /, "");
-      currentContent = [];
-    } else {
-      currentContent.push(line);
-    }
-  }
-
-  // Save last section
-  if (currentSection) {
-    sections[currentSection] = currentContent.join("\n").trim();
-  }
-
-  return sections;
-}
-
-function parseSecurityReview(content: string): SecurityReviewItem[] {
-  const items: SecurityReviewItem[] = [];
-  const lines = content
-    .split("\n")
-    .filter((line) => line.trim().startsWith("-"));
-
-  for (const line of lines) {
-    // Parse line like: "- Authentication: ✅ OAuth 2.0"
-    const match = line.match(/^-\s*(.+?):\s*(.+)$/);
-    if (match) {
-      const type = match[1].trim();
-      const rest = match[2].trim();
-
-      // Check for checkmark emoji or other status indicators
-      const hasCheckmark =
-        rest.includes("✅") || rest.includes("☑") || rest.includes("✓");
-      const status = hasCheckmark ? "success" : "alert";
-
-      // Remove status emoji from description
-      const description = rest.replace(/[✅☑✓❌]/g, "").trim();
-
-      items.push({ type, status, description });
-    }
-  }
-
-  return items;
-}
 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>();
@@ -198,6 +141,183 @@ export default function ReportDetail() {
 
   return (
     <>
+      <style>
+        {`
+          div.markdown-content {
+            font-family: var(--bf-font-family-base);
+            line-height: 1.6;
+            color: var(--bfc-base-c-1);
+          }
+
+          div.markdown-content h1 {
+            font-size: var(--bf-font-size-xl);
+            font-weight: 600;
+            margin: 0 0 var(--bf-spacing-l) 0;
+            color: var(--bfc-base-c-1);
+            line-height: 1.3;
+            display: block;
+          }
+
+          div.markdown-content h1:first-child {
+            margin-top: 0;
+          }
+
+          div.markdown-content h2 {
+            font-size: var(--bf-font-size-l);
+            font-weight: 600;
+            margin: var(--bf-spacing-xl) 0 var(--bf-spacing-m) 0;
+            color: var(--bfc-base-c-1);
+            line-height: 1.3;
+            display: block;
+          }
+
+          div.markdown-content h2:first-child {
+            margin-top: 0;
+          }
+
+          div.markdown-content h3 {
+            font-size: var(--bf-font-size-m);
+            font-weight: 600;
+            margin: var(--bf-spacing-l) 0 var(--bf-spacing-s) 0;
+            color: var(--bfc-base-c-1);
+            line-height: 1.4;
+            display: block;
+          }
+
+          div.markdown-content h4 {
+            font-size: var(--bf-font-size-m);
+            font-weight: 600;
+            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            color: var(--bfc-base-c-1);
+            display: block;
+          }
+
+          div.markdown-content h5 {
+            font-size: var(--bf-font-size-base);
+            font-weight: 600;
+            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            color: var(--bfc-base-c-2);
+            display: block;
+          }
+
+          div.markdown-content h6 {
+            font-size: var(--bf-font-size-s);
+            font-weight: 600;
+            margin: var(--bf-spacing-m) 0 var(--bf-spacing-xs) 0;
+            color: var(--bfc-base-c-2);
+            display: block;
+          }
+
+          div.markdown-content p {
+            margin: 0 0 var(--bf-spacing-m) 0;
+            font-size: var(--bf-font-size-base);
+            display: block;
+          }
+
+          div.markdown-content ul,
+          div.markdown-content ol {
+            margin: 0 0 var(--bf-spacing-m) 0;
+            padding-left: var(--bf-spacing-l);
+            display: block;
+          }
+
+          div.markdown-content li {
+            margin: var(--bf-spacing-xs) 0;
+            display: list-item;
+          }
+
+          div.markdown-content ul li {
+            list-style-type: disc;
+          }
+
+          div.markdown-content ol li {
+            list-style-type: decimal;
+          }
+
+          div.markdown-content code {
+            font-family: var(--bf-font-family-mono, 'Monaco', 'Courier New', monospace);
+            font-size: var(--bf-font-size-s);
+            background-color: var(--bfc-base-2);
+            padding: var(--bf-spacing-2xs) var(--bf-spacing-xs);
+            border-radius: var(--bf-border-radius-s);
+            color: var(--bfc-base-c-1);
+          }
+
+          div.markdown-content pre {
+            background-color: var(--bfc-base-2);
+            border: 1px solid var(--bfc-base-dimmed);
+            border-radius: var(--bf-border-radius-m);
+            padding: var(--bf-spacing-m);
+            overflow-x: auto;
+            margin: 0 0 var(--bf-spacing-m) 0;
+          }
+
+          div.markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: var(--bf-font-size-s);
+          }
+
+          div.markdown-content blockquote {
+            border-left: 4px solid var(--bfc-theme);
+            padding-left: var(--bf-spacing-m);
+            margin: 0 0 var(--bf-spacing-m) 0;
+            color: var(--bfc-base-c-2);
+            font-style: italic;
+          }
+
+          div.markdown-content a {
+            color: var(--bfc-theme);
+            text-decoration: none;
+          }
+
+          div.markdown-content a:hover {
+            text-decoration: underline;
+          }
+
+          div.markdown-content hr {
+            border: none;
+            border-top: 1px solid var(--bfc-base-dimmed);
+            margin: var(--bf-spacing-xl) 0;
+          }
+
+          div.markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 var(--bf-spacing-m) 0;
+            border: 1px solid var(--bfc-base-dimmed);
+            border-radius: var(--bf-border-radius-m);
+            overflow: hidden;
+          }
+
+          div.markdown-content th {
+            background-color: var(--bfc-base-2);
+            padding: var(--bf-spacing-s);
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--bfc-base-dimmed);
+          }
+
+          div.markdown-content td {
+            padding: var(--bf-spacing-s);
+            border-bottom: 1px solid var(--bfc-base-dimmed);
+          }
+
+          div.markdown-content tr:last-child td {
+            border-bottom: none;
+          }
+
+          div.markdown-content strong {
+            font-weight: 600;
+            color: var(--bfc-base-c-1);
+          }
+
+          div.markdown-content em {
+            font-style: italic;
+          }
+        `}
+      </style>
+
       <Breadcrumbs style={{ marginBottom: "1.5rem" }}>
         <Breadcrumbs.Item>
           <Link to="/">MCP Submissions</Link>
@@ -559,211 +679,91 @@ export default function ReportDetail() {
         <Section>
           <Section.Header>Full Report</Section.Header>
           <Section.Content>
-            {/* Security Review Table */}
-            {(() => {
-              const securityReviewItems =
-                report.report_json?.security_review?.items;
+            <div style={{ margin: "-16px 0" }}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({ children, node }) => {
+                    // Skip the first h1 (MCP Go-Live Report title)
+                    const isFirstH1 = node?.position?.start?.line === 1;
+                    if (isFirstH1) return null;
 
-              if (securityReviewItems && securityReviewItems.length > 0) {
-                return (
-                  <div
+                    return (
+                      <h2
+                        style={{
+                          fontSize: "var(--bf-font-size-l)",
+                          fontWeight: 600,
+                          margin: "1.5rem 0 0.75rem 0",
+                          color: "var(--bfc-base-c-1)",
+                        }}
+                      >
+                        {children}
+                      </h2>
+                    );
+                  },
+                h2: ({ children }) => (
+                  <h3
                     style={{
-                      marginBottom: "2rem",
-                      border: "1px solid var(--bfc-base-dimmed)",
-                      borderRadius: "8px",
-                      overflow: "hidden",
+                      fontSize: "var(--bf-font-size-m)",
+                      fontWeight: 600,
+                      margin: "1.25rem 0 0.5rem 0",
+                      color: "var(--bfc-base-c-1)",
                     }}
                   >
-                    <Table noBorder>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.HeaderCell
-                            colSpan={3}
-                            style={{
-                              borderBottom: "1px solid var(--bfc-base-dimmed)",
-                              backgroundColor: "var(--bfc-base-2)",
-                            }}
-                          >
-                            <span style={{ fontWeight: 600 }}>
-                              Security Review
-                            </span>
-                          </Table.HeaderCell>
-                        </Table.Row>
-                        <Table.Row>
-                          <Table.HeaderCell>Type</Table.HeaderCell>
-                          <Table.HeaderCell>Status</Table.HeaderCell>
-                          <Table.HeaderCell>Description</Table.HeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {securityReviewItems.map((item: SecurityReviewItem) => (
-                          <Table.Row key={item.type}>
-                            <Table.Cell>{item.type}</Table.Cell>
-                            <Table.Cell>
-                              <Badge
-                                state={
-                                  item.status === "Pass" ? "success" : "alert"
-                                }
-                              >
-                                {item.status}
-                              </Badge>
-                            </Table.Cell>
-                            <Table.Cell>{item.description}</Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table>
-                  </div>
-                );
-              }
-
-              // Fall back to parsing from markdown if not in JSON
-              const sections = parseReportContent(report.report_data);
-              const securityContent = sections["Security Review"];
-              if (securityContent) {
-                const items = parseSecurityReview(securityContent);
-                if (items.length > 0) {
-                  return (
-                    <div
-                      style={{
-                        marginBottom: "2rem",
-                        border: "1px solid var(--bfc-base-dimmed)",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <Table noBorder>
-                        <Table.Header>
-                          <Table.Row>
-                            <Table.HeaderCell
-                              colSpan={3}
-                              style={{
-                                borderBottom:
-                                  "1px solid var(--bfc-base-dimmed)",
-                                backgroundColor: "var(--bfc-base-2)",
-                              }}
-                            >
-                              <span style={{ fontWeight: 600 }}>
-                                Security Review
-                              </span>
-                            </Table.HeaderCell>
-                          </Table.Row>
-                          <Table.Row>
-                            <Table.HeaderCell>Type</Table.HeaderCell>
-                            <Table.HeaderCell>Status</Table.HeaderCell>
-                            <Table.HeaderCell>Description</Table.HeaderCell>
-                          </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                          {items.map((item) => (
-                            <Table.Row key={item.type}>
-                              <Table.Cell>{item.type}</Table.Cell>
-                              <Table.Cell>
-                                <Badge
-                                  state={item.status as "success" | "alert"}
-                                >
-                                  {item.status === "success" ? "Pass" : "Fail"}
-                                </Badge>
-                              </Table.Cell>
-                              <Table.Cell>{item.description}</Table.Cell>
-                            </Table.Row>
-                          ))}
-                        </Table.Body>
-                      </Table>
-                    </div>
-                  );
-                }
-              }
-              return null;
-            })()}
-
-            {/* Testing Section */}
-            {(() => {
-              const sections = parseReportContent(report.report_data);
-              const testingContent = sections.Testing;
-              if (testingContent) {
-                // Parse testing content to get bullet points
-                const lines = testingContent
-                  .split("\n")
-                  .map((l) => l.trim())
-                  .filter((l) => l.startsWith("-"));
-
-                // Find unit tests and integration tests lines
-                const unitTestLine = lines.find((l) =>
-                  /unit\s+tests?:/i.test(l),
-                );
-                const integrationTestLine = lines.find((l) =>
-                  /integration\s+tests?:/i.test(l),
-                );
-
-                // Only render if at least one test line exists
-                if (!unitTestLine && !integrationTestLine) {
-                  return null;
-                }
-
-                return (
-                  <div
+                    {children}
+                  </h3>
+                ),
+                h3: ({ children }) => (
+                  <h4
                     style={{
-                      marginTop: "var(--bfs24)",
-                      border: "1px solid var(--bfc-base-dimmed)",
-                      borderRadius: "8px",
-                      overflow: "hidden",
+                      fontSize: "var(--bf-font-size-base)",
+                      fontWeight: 600,
+                      margin: "1rem 0 0.5rem 0",
+                      color: "var(--bfc-base-c-1)",
                     }}
                   >
-                    <Table noBorder>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.HeaderCell
-                            style={{
-                              borderBottom: "1px solid var(--bfc-base-dimmed)",
-                              backgroundColor: "var(--bfc-base-2)",
-                            }}
-                          >
-                            <span style={{ fontWeight: 600 }}>Testing</span>
-                          </Table.HeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {unitTestLine && (
-                          <Table.Row>
-                            <Table.Cell>
-                              {(() => {
-                                const text = unitTestLine.replace(/^-\s*/i, "");
-                                const [before, after] = text.split(":");
-                                return (
-                                  <>
-                                    <strong>{before}:</strong> {after}
-                                  </>
-                                );
-                              })()}
-                            </Table.Cell>
-                          </Table.Row>
-                        )}
-                        {integrationTestLine && (
-                          <Table.Row>
-                            <Table.Cell>
-                              {(() => {
-                                const text = integrationTestLine.replace(
-                                  /^-\s*/i,
-                                  "",
-                                );
-                                const [before, after] = text.split(":");
-                                return (
-                                  <>
-                                    <strong>{before}:</strong> {after}
-                                  </>
-                                );
-                              })()}
-                            </Table.Cell>
-                          </Table.Row>
-                        )}
-                      </Table.Body>
-                    </Table>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+                    {children}
+                  </h4>
+                ),
+                p: ({ children }) => (
+                  <p
+                    style={{
+                      margin: "0 0 1rem 0",
+                      fontSize: "var(--bf-font-size-base)",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {children}
+                  </p>
+                ),
+                ul: ({ children }) => (
+                  <ul
+                    style={{
+                      margin: "0 0 1rem 0",
+                      paddingLeft: "1.5rem",
+                    }}
+                  >
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children }) => (
+                  <ol
+                    style={{
+                      margin: "0 0 1rem 0",
+                      paddingLeft: "1.5rem",
+                    }}
+                  >
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => (
+                  <li style={{ margin: "0.25rem 0" }}>{children}</li>
+                ),
+              }}
+              >
+                {report.report_data}
+              </ReactMarkdown>
+            </div>
           </Section.Content>
         </Section>
       </Grid>

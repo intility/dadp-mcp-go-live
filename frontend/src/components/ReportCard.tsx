@@ -80,7 +80,6 @@ export function ReportCard({ report }: ReportCardProps) {
               Submitted
             </div>
             <div>
-              <strong>Submitted:</strong>{" "}
               <FormatDate
                 date={new Date(report.submitted_at)}
                 show="datetime"
@@ -99,7 +98,6 @@ export function ReportCard({ report }: ReportCardProps) {
                 Reviewed
               </div>
               <div>
-                <strong>Reviewed:</strong>{" "}
                 <FormatDate
                   date={new Date(report.reviewed_at)}
                   show="datetime"

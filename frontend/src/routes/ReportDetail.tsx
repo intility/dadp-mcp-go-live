@@ -676,96 +676,97 @@ export default function ReportDetail() {
         )}
 
         {/* Full Report */}
-        <Section>
-          <Section.Header>Full Report</Section.Header>
-          <Section.Content>
-            <div style={{ margin: "-16px 0" }}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({ children, node }) => {
-                    // Skip the first h1 (MCP Go-Live Report title)
-                    const isFirstH1 = node?.position?.start?.line === 1;
-                    if (isFirstH1) return null;
-
-                    return (
-                      <h2
-                        style={{
-                          fontSize: "var(--bf-font-size-l)",
-                          fontWeight: 600,
-                          margin: "1.5rem 0 0.75rem 0",
-                          color: "var(--bfc-base-c-1)",
-                        }}
-                      >
-                        {children}
-                      </h2>
-                    );
-                  },
-                h2: ({ children }) => (
-                  <h3
+        <Box
+          radius
+          padding={24}
+          style={{
+            border: "1px solid var(--bfc-base-dimmed)",
+          }}
+        >
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ children, node }) => {
+                // Check if this is the first h1
+                const isFirstH1 = node?.position?.start?.line === 1;
+                return (
+                  <h2
                     style={{
-                      fontSize: "var(--bf-font-size-m)",
+                      fontSize: "var(--bf-font-size-l)",
                       fontWeight: 600,
-                      margin: "1.25rem 0 0.5rem 0",
+                      margin: isFirstH1
+                        ? "0 0 0.75rem 0"
+                        : "1.5rem 0 0.75rem 0",
                       color: "var(--bfc-base-c-1)",
                     }}
                   >
                     {children}
-                  </h3>
-                ),
-                h3: ({ children }) => (
-                  <h4
-                    style={{
-                      fontSize: "var(--bf-font-size-base)",
-                      fontWeight: 600,
-                      margin: "1rem 0 0.5rem 0",
-                      color: "var(--bfc-base-c-1)",
-                    }}
-                  >
-                    {children}
-                  </h4>
-                ),
-                p: ({ children }) => (
-                  <p
-                    style={{
-                      margin: "0 0 1rem 0",
-                      fontSize: "var(--bf-font-size-base)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul
-                    style={{
-                      margin: "0 0 1rem 0",
-                      paddingLeft: "1.5rem",
-                    }}
-                  >
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol
-                    style={{
-                      margin: "0 0 1rem 0",
-                      paddingLeft: "1.5rem",
-                    }}
-                  >
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li style={{ margin: "0.25rem 0" }}>{children}</li>
-                ),
-              }}
-              >
-                {report.report_data}
-              </ReactMarkdown>
-            </div>
-          </Section.Content>
-        </Section>
+                  </h2>
+                );
+              },
+              h2: ({ children }) => (
+                <h3
+                  style={{
+                    fontSize: "var(--bf-font-size-m)",
+                    fontWeight: 600,
+                    margin: "1.25rem 0 0.5rem 0",
+                    color: "var(--bfc-base-c-1)",
+                  }}
+                >
+                  {children}
+                </h3>
+              ),
+              h3: ({ children }) => (
+                <h4
+                  style={{
+                    fontSize: "var(--bf-font-size-base)",
+                    fontWeight: 600,
+                    margin: "1rem 0 0.5rem 0",
+                    color: "var(--bfc-base-c-1)",
+                  }}
+                >
+                  {children}
+                </h4>
+              ),
+              p: ({ children }) => (
+                <p
+                  style={{
+                    margin: "0 0 1rem 0",
+                    fontSize: "var(--bf-font-size-base)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {children}
+                </p>
+              ),
+              ul: ({ children }) => (
+                <ul
+                  style={{
+                    margin: "0 0 1rem 0",
+                    paddingLeft: "1.5rem",
+                  }}
+                >
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol
+                  style={{
+                    margin: "0 0 1rem 0",
+                    paddingLeft: "1.5rem",
+                  }}
+                >
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li style={{ margin: "0.25rem 0" }}>{children}</li>
+              ),
+            }}
+          >
+            {report.report_data}
+          </ReactMarkdown>
+        </Box>
       </Grid>
     </>
   );
